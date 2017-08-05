@@ -65,6 +65,7 @@ var COST_WOOD_HOUSE = 1
 var TIME_TIL_BIRTH = 1
 var AGE_MIN_PROCREATE = 16
 var HUNGER_PER_TURN = 1
+var ATTRIBUTES = {"Strength": 1, "Fertility": 1, "Focus": 1}
 //Objects
 //A group of people and their belongings and Buildings
 //Resources are contributed to the town
@@ -90,8 +91,16 @@ function Nature (type) {
   }
 }
 //Actions per turn
-//Work, sleep, give birth (f), impregnate (m)
+//Work, eat
+//Auto Actions per turn: sleep, give birth/advance pregnancy (f), impregnate wife (m)
 
+//Attributes
+//Strength - Affects woodcutting ability
+//Fertility - Affects ability to impregnate/get pregnant
+//Focus - Affects build speed
+//Trait modifiers (change over time/through quests)
+//Positive Modifiers: Strong, Swift, Smart
+//Negative Modifiers: Weak, Slow, Dumb
 function Person(name, mother, father, gender, town) {
   this.name = name
   this.mother = mother
@@ -104,6 +113,7 @@ function Person(name, mother, father, gender, town) {
   this.god = null //the god they serve
   this.job = null
   this.married_to = null
+  this.attributes = ATTRIBUTES
   if (this.gender === "f") {
     this.spermdoner = null;
     this.pregnancy = -1 //if -1 false. turn to zero to turn on
@@ -116,11 +126,13 @@ function Person(name, mother, father, gender, town) {
       if (Math.floor(Math.random() * 2) + 1 == 2)
         gender = "m"
       //NOTE: Newborns are not assigned a god because they cannot be given orders (yet)
-      newborn = new Person(childname, this.name, this.spermdoner.name, gender, this.town)
+      newborn = new Person(childname, this, this.spermdoner, gender, this.town)
+      newborn.attributes = combineAttributes(this, this.spermdoner)
       this.spermdoner = null
       this.pregnancy = -1
     }
   }
+  //NOTE: Men should try to impregnate their wives only.
   else {
     this.impregnate = function(person) {
       if (this.age >= AGE_MIN_PROCREATE && person.gender === "f" && person.age >= AGE_MIN_PROCREATE && person.pregnancy < 0){
@@ -225,7 +237,16 @@ function God () {
   }
 
 }
+//Takes mother and father's attributes and combines them for newborns
+function combineAttributes(mother, father) {
+  atr = ATTRIBUTES
+  Object.keys(ATTRIBUTES).forEach(function(element) {
+    //console.log(father.attributes)
+    atr[element] = mother.attributes[element] + father.attributes[element]
 
+  })
+  return atr
+}
 function msg(str) {
   console.log(str.toString())
 }
@@ -237,21 +258,18 @@ Adam = new Person("Adam", null, null, "m", Eden)
 Eve = new Person("Eve", null, null, "f", Eden)
 //Marriage
 Adam.age = AGE_MIN_PROCREATE
-//msg(Adam.married_to)
 Player.marryCouple(Adam, Eve)
 AssertEqual(Eve.married_to, null, "Cannot marry under age of procreation")
 Diego = new Person("Diego", null, null, "m", Eden)
 Diego.age = AGE_MIN_PROCREATE
 Player.marryCouple(Adam, Diego)
-//msg(Adam.married_to.name)
 AssertEqual(Adam.married_to, null, "Cannot marry same sex")
 Eve.age = AGE_MIN_PROCREATE
 Player.marryCouple(Adam, Eve)
 AssertEqual(Adam.married_to.name, Eve.name, "Can marry man and woman")
 AssertEqual(Eve.married_to.name, Adam.name, "Can marry woman and man")
 
-
-//Pregnancy
+//Pregnancy and birth
 Adam.age = AGE_MIN_PROCREATE
 Eve.age = AGE_MIN_PROCREATE
 Adam.impregnate(Eve)
@@ -260,6 +278,8 @@ num_people_before_birth = Eden.people.length
 for (var i = 0; i < TIME_TIL_BIRTH; i++)
   Eve.increaseAge()
 AssertEqual(Eden.people.length, num_people_before_birth+1, "Upon bearing children, number of people in town increases by 1")
+baby = Eden.people[Eden.people.length-1]
+AssertEqual(baby.attributes.Strength, 2, "When born, babies have a combination of their mother and father's attributes")
 
 
 //Assigning a job
@@ -267,8 +287,6 @@ Adam.god = Player
 Player.assignJob(Adam, "woodsman")
 AssertEqual(Player.assignJob(Adam, "woodsman"), true, "God can assign job to people who believe")
 AssertEqual(Player.assignJob(Eve, "woodsman"), false, "God cannot assign job to people who don't believe")
-
-
 //Working
 Adam.work(Forest)
 Adam.work(Forest)
