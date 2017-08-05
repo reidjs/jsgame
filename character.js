@@ -25,9 +25,14 @@
 //Risk and Reward: Grand projects like churches, altars, etc. have the potential to bring big faith rewards, but
 //these large projects may require you to put your followers in harms way. As long as you have a man and a woman your town
 //can live on.
-//You risk your followers by grouping and outfitting them [armor, weapons, powers] and sending them on quests
+//You risk your followers by grouping and outfitting them [armor, weapons, powers, loot] and sending them on quests
 //the goal is to build balanced groups (healer, tank, ranger, missionary) and having them go coerce other
 //societies into believing you. Their success is passive after being outfitted because they leave your 'influence'
+//generally they will return (sometimes they will die) with ailments and bonuses based on the quest profile and their
+//initial properties and skills. They can sometimes bring back loot and other followers.
+
+//loot are passive skill boosting objects
+
 
 
 function AssertEqual(actual, expected, comment) {
@@ -274,7 +279,7 @@ Bob.town.farms = 0
 Bob.work()
 AssertEqual(Bob.town.food, current_food, "Food does not increase if there are no farms to work")
 
-
+console.log(Bob)
 
 
 
