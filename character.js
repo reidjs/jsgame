@@ -36,6 +36,14 @@
 
 
 function AssertEqual(actual, expected, comment) {
+  if (actual === undefined )
+    actual = "undefined"
+  if (expected === undefined )
+    expected = "undefined"
+  if (actual === null)
+    actual = "null"
+  if (expected === null)
+    expected = "null"
   if (actual == expected)
     if (comment !== undefined)
       msg("passed")//msg("PASSED: "+ comment)
@@ -58,12 +66,17 @@ var TIME_TIL_BIRTH = 1
 var AGE_MIN_PROCREATE = 16
 var HUNGER_PER_TURN = 1
 //Objects
+//A group of people and their belongings and Buildings
+//Resources are contributed to the town
+//in a way controls the main loop because it will loop thorugh all people []
+//and each one will do stuff based on their traits
 function Town() {
   this.people = []
   this.farms = 0
   this.houses = 0
   this.wood = 0
   this.food = 0
+
 }
 function Nature (type) {
   //Disease
@@ -76,6 +89,9 @@ function Nature (type) {
 
   }
 }
+//Actions per turn
+//Work, sleep, give birth (f), impregnate (m)
+
 function Person(name, mother, father, gender, town) {
   this.name = name
   this.mother = mother
@@ -87,7 +103,7 @@ function Person(name, mother, father, gender, town) {
   this.hunger = 0
   this.god = null //the god they serve
   this.job = null
-
+  this.married_to = null
   if (this.gender === "f") {
     this.spermdoner = null;
     this.pregnancy = -1 //if -1 false. turn to zero to turn on
@@ -198,6 +214,15 @@ function God () {
     }
     return false
   }
+  //will cause procreation at regular intervals
+  this.marryCouple = function(man, woman) {
+    if (man.gender === "m" && woman.gender === "f" &&
+      man.age >= AGE_MIN_PROCREATE && woman.age >= AGE_MIN_PROCREATE &&
+      !man.married_to && !woman.married_to) {
+        man.married_to = woman
+        woman.married_to = man
+    }
+  }
 
 }
 
@@ -210,6 +235,21 @@ Forest = new Nature("forest")
 //notice the null mother and father!
 Adam = new Person("Adam", null, null, "m", Eden)
 Eve = new Person("Eve", null, null, "f", Eden)
+//Marriage
+Adam.age = AGE_MIN_PROCREATE
+//msg(Adam.married_to)
+Player.marryCouple(Adam, Eve)
+AssertEqual(Eve.married_to, null, "Cannot marry under age of procreation")
+Diego = new Person("Diego", null, null, "m", Eden)
+Diego.age = AGE_MIN_PROCREATE
+Player.marryCouple(Adam, Diego)
+//msg(Adam.married_to.name)
+AssertEqual(Adam.married_to, null, "Cannot marry same sex")
+Eve.age = AGE_MIN_PROCREATE
+Player.marryCouple(Adam, Eve)
+AssertEqual(Adam.married_to.name, Eve.name, "Can marry man and woman")
+AssertEqual(Eve.married_to.name, Adam.name, "Can marry woman and man")
+
 
 //Pregnancy
 Adam.age = AGE_MIN_PROCREATE
@@ -279,7 +319,7 @@ Bob.town.farms = 0
 Bob.work()
 AssertEqual(Bob.town.food, current_food, "Food does not increase if there are no farms to work")
 
-console.log(Bob)
+//console.log(Bob)
 
 
 
