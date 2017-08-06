@@ -189,54 +189,59 @@ function Person(name, mother, father, gender, town) {
     "chopWood" : {"environment": "forest", "requiredPeople": 1},
     "buildFarm" : {"environment": "town", "requiredPeople": 1,
     "requiredWood": COST_WOOD_FARM}}
-  ACTION_PAYOFF = {
-    "walkTo" : {"moveTo" : 1},
-    "chopWood" : {"giveWood" : 1},
-    "buildFarm" : {"giveFarms" : 1}
+  ACTION_PAYOFFS = {
+    "walkTo" : {},
+    "chopWood" : {"wood" : 1},
+    "buildFarm" : {"farms" : 1}
   }
   this.meetsRequirement = function(requirement, value) {
     switch(requirement) {
       case "environment":
         return this.location.type == value
-      break
+        break
       case "requiredPeople":
-        return this.location.allPeopleNames == value
-      break
+        return this.location.allPeopleNames().length >= value
+        break
       case "requiredWood":
-        return this.town.wood == value
-      break
+        return this.town.wood >= value
+        break
     }
-
+  }
+  this.getPayoff = function(resource, value) {
+    switch(resource) {
+      case "wood":
+        this.town.wood += 1 //consider putting in inventory til they get to town
+        break
+      case "farms":
+        this.town.farms += 1
+        break
+    }
   }
   this.action = function(action, value) {
     if (ACTIONS[action] === undefined)
       return false
-      // https://stackoverflow.com/questions/558981/getting-a-list-of-associative-array-keys
-    var keys = [];
-    var requirements = ACTION_REQUIREMENTS[action]
-    for (var key in requirements) {
-      if (requirements.hasOwnProperty(key)) {
-        keys.push(key);
-      }
-    }
+    keys = returnKeysFromDictionary(ACTION_REQUIREMENTS[action])
     //check if all requirements are met
     for (i = 0; i < keys.length; i++) {
-      //ensure person can meet each requirement
       if (!this.meetsRequirement(keys[i], ACTION_REQUIREMENTS[action][keys[i]])) {
-        //p("did not meet req ", keys[i], "      ", ACTION_REQUIREMENTS[keys[i]])
         return false;
       }
-      else {
-      }
     }
-    //do the action
+    //do the action (movement is weird)
     if (action == "walkTo" && value instanceof Environment)  {
       this.location.removePerson(this)
       value.addPerson(this)
       this.location = value
     }
+    //at this point we  loop through the payoffs
+
+    keys = returnKeysFromDictionary(ACTION_PAYOFFS[action])
+    for (i = 0; i < keys.length; i++) {
+      this.getPayoff(keys[i], ACTION_PAYOFFS[action][keys[i]])
+    }
   }
   //should affect or be affected by hunger. Hungry people are worse workers.
+  //this will be segue into the actions function
   this.work = function(workedObject) {
     switch(this.job) {
       case "clergy":
@@ -337,7 +342,16 @@ function clone(obj) {
     }
     return copy;
 }
-
+// https://stackoverflow.com/questions/558981/getting-a-list-of-associative-array-keys
+function returnKeysFromDictionary(dictionary) {
+  keys = [];
+  for (var key in dictionary) {
+    if (dictionary.hasOwnProperty(key)) {
+      keys.push(key);
+    }
+  }
+  return keys
+}
 //Takes mother and father's attributes and combines them for newborns
 function combineAttributes(mother, father) {
   atr = clone(ATTRIBUTES)
@@ -371,7 +385,9 @@ AssertEqual(Eden.allPeopleNames().length, 2, " two people to the town after remo
 AssertEqual(Adam.action("chopWood"), false, "persons cannot chop wood when theyre in the town")
 Adam.action("walkTo", Forest)
 AssertEqual(Adam.location.id, Forest.id, "persons can move when given a location")
-AssertEqual(Adam.action("chopWood"), true, "persons can chop wood when theyre in the forest")
+wood = Eden.wood
+Adam.action("chopWood")
+AssertEqual(Eden.wood > wood, true, "after chopping wood, the amount of wood in the town increases")
 
 //Adam.town.wood =
 //Adam.action("chopWood")
@@ -399,7 +415,6 @@ for (var i = 0; i < TIME_TIL_BIRTH; i++)
   Eve.increaseAge()
 AssertEqual(Eden.allPeopleNames().length, num_people_before_birth+1, "Upon bearing children, number of people in town increases by 1")
 //p (Eve.attributes.Strength )
-//For some reason the parents attributes are doubled?
 baby = Eden.lastPerson
 AssertEqual(baby.attributes.Strength, Eve.attributes.Strength + Adam.attributes.Strength, "When born, babies have a combination of their mother and father's attributes")
 
