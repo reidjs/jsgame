@@ -186,12 +186,13 @@ function Person(name, mother, father, gender, town) {
   }
   ACTION_REQUIREMENTS = {
     "walkTo" : {},
-    "chopWood" : {"environment": "forest", "requiredPeople": 1, "requiredAge": 16, "requiredTrees":1},
+    "chopWood" : {"environment": "forest", "requiredPeople": 1,
+    "requiredAge": 16, "requiredTrees":1},
     "buildFarm" : {"environment": "town", "requiredPeople": 1,
     "requiredWood": COST_WOOD_FARM}}
   ACTION_PAYOFFS = {
     "walkTo" : {},
-    "chopWood" : {"wood" : 1},
+    "chopWood" : {"wood" : 1, "hunger" : 1},
     "buildFarm" : {"farms" : 1}
   }
   this.meetsRequirement = function(requirement, value) {
@@ -220,6 +221,9 @@ function Person(name, mother, father, gender, town) {
         break
       case "farms":
         this.town.farms += 1
+        break
+      case "hunger":
+        this.hunger += 1
         break
     }
   }
@@ -392,6 +396,7 @@ AssertEqual(Adam.action("chopWood"), false, "persons cannot chop wood when theyr
 Adam.action("walkTo", Forest)
 AssertEqual(Adam.location.id, Forest.id, "persons can move when given a location")
 wood = Eden.wood
+hunger = Adam.hunger
 Adam.action("chopWood")
 AssertEqual(Eden.wood > wood, false, "person must be old enough to chop wood")
 Adam.age = 17
@@ -400,6 +405,7 @@ AssertEqual(Eden.wood > wood, false, "there must be trees to chop wood")
 Adam.location.trees = 1
 Adam.action("chopWood")
 AssertEqual(Eden.wood > wood, true, "after chopping wood, the amount of wood in the town increases")
+AssertEqual(Adam.hunger > hunger, true, "after chopping wood, the person gets hungry")
 
 //Adam.town.wood =
 //Adam.action("chopWood")
