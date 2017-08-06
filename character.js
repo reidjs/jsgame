@@ -33,7 +33,7 @@
 
 //loot are passive skill boosting objects
 
-
+//Consider removing the phaser stuff.
 
 function AssertEqual(actual, expected, comment) {
   if (actual === undefined )
@@ -46,14 +46,14 @@ function AssertEqual(actual, expected, comment) {
     expected = "null"
   if (actual == expected)
     if (comment !== undefined)
-      msg("passed")//msg("PASSED: "+ comment)
+      p("passed")//p("PASSED: "+ comment)
     else
-      msg("passed")//msg("passed")
+      p("passed")
   else {
     if (comment !== undefined)
-      msg("FAILED: expected: " + expected.toString() + ", actual: " + actual.toString() + ", " + comment)
+      p("FAILED: expected: " + expected.toString() + ", actual: " + actual.toString() + ", " + comment)
     else {
-      msg("FAILED: expected: " + expected.toString() + ", actual: " + actual.toString())
+      p("FAILED: expected: " + expected.toString() + ", actual: " + actual.toString())
     }
 
   }
@@ -247,15 +247,18 @@ function combineAttributes(mother, father) {
   })
   return atr
 }
-function msg(str) {
-  console.log(str.toString())
-}
+
+p = console.log //to shorten our log statements
+
 Player = new God()
 Eden = new Town()
 Forest = new Nature("forest")
 //notice the null mother and father!
 Adam = new Person("Adam", null, null, "m", Eden)
 Eve = new Person("Eve", null, null, "f", Eden)
+
+
+
 //Marriage
 Adam.age = AGE_MIN_PROCREATE
 Player.marryCouple(Adam, Eve)
