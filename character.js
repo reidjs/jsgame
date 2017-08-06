@@ -36,6 +36,7 @@
 //Consider removing the phaser stuff.
 p = console.log //to shorten our log statements
 var crypto = require('crypto')
+var mutePassingTests = true
 function AssertEqual(actual, expected, comment) {
   if (actual === undefined )
     actual = "undefined"
@@ -46,10 +47,10 @@ function AssertEqual(actual, expected, comment) {
   if (expected === null)
     expected = "null"
   if (actual == expected)
-    if (comment !== undefined)
-      p("passed")//p("PASSED: "+ comment)
+    if (!mutePassingTests)
+      p("passed", comment)
     else
-      p("passed")
+      ;
   else {
     if (comment !== undefined)
       p("FAILED: expected: " + expected.toString() + ", actual: " + actual.toString() + ", " + comment)
@@ -67,13 +68,19 @@ var TIME_TIL_BIRTH = 1
 var AGE_MIN_PROCREATE = 16
 var HUNGER_PER_TURN = 1
 var ATTRIBUTES = {"Strength": 1, "Fertility": 1, "Focus": 1}
+var STATUS = {"age": 0, "hunger": 0, "health":100}
 //Objects
 //A group of people and their belongings and Buildings
 //Resources are contributed to the town
 //in a way controls the main loop because it will loop thorugh all people []
 //and each one will do stuff based on their traits
-function Town() {
+function Environment(type) {
+  this.id = crypto.randomBytes(20).toString('hex');
+  this.type = type
   this.people = {}
+  this.buildings = {}
+  this.monsters = {}
+  this.resources = {}
   this.farms = 0
   this.houses = 0
   this.wood = 0
@@ -81,6 +88,7 @@ function Town() {
   this.lastPerson = null //last person added to town
   this.addPerson = function(person) {
     this.people[person.id] = person
+    person.location = this
     this.lastPerson = person //WARNING: if they die then this will cause err.
   }
   this.allPeopleNames = function() {
@@ -98,14 +106,7 @@ function Town() {
 
 }
 
-function Nature (type) {
-  //Disease
-  //Events
-  //Provides food/wood/resources
-  this.type = type
-  this.food = 100
-  this.wood = 100
-}
+
 //Actions per turn
 //Work, eat, pray
 //Auto Actions per turn: sleep, give birth/advance pregnancy (f), impregnate wife (m)
@@ -120,11 +121,13 @@ function Nature (type) {
 function Person(name, mother, father, gender, town) {
   //https://stackoverflow.com/questions/9407892/how-to-generate-random-sha1-hash-to-use-as-id-in-node-js
   this.id = crypto.randomBytes(20).toString('hex');
+  this.type = "human"
   this.name = name
   this.mother = mother
   this.father = father
   this.gender = gender
   this.town = town
+  this.location = town
   //on creation we must hash them into the town dict for quick access
   town.addPerson(this)
   this.age = 0
@@ -174,6 +177,63 @@ function Person(name, mother, father, gender, town) {
         this.pregnancy += 1 //increase 'age' of pregnancy
       if (this.pregnancy >= TIME_TIL_BIRTH)
         this.giveBirth()
+    }
+  }
+  //List of requirements to perform an action
+  //ACTION = {environment, #required people, #tools, #resources}
+  ACTIONS = {
+    "walkTo": "human", "chopWood" : "human", "buildFarm" : "human"
+  }
+  ACTION_REQUIREMENTS = {
+    "walkTo" : {},
+    "chopWood" : {"environment": "forest", "requiredPeople": 1},
+    "buildFarm" : {"environment": "town", "requiredPeople": 1,
+    "requiredWood": COST_WOOD_FARM}}
+  ACTION_PAYOFF = {
+    "walkTo" : {"moveTo" : 1},
+    "chopWood" : {"giveWood" : 1},
+    "buildFarm" : {"giveFarms" : 1}
+  }
+  this.meetsRequirement = function(requirement, value) {
+    switch(requirement) {
+      case "environment":
+        return this.location.type == value
+      break
+      case "requiredPeople":
+        return this.location.allPeopleNames == value
+      break
+      case "requiredWood":
+        return this.town.wood == value
+      break
+    }
+
+  }
+  this.action = function(action, value) {
+    if (ACTIONS[action] === undefined)
+      return false
+      // https://stackoverflow.com/questions/558981/getting-a-list-of-associative-array-keys
+    var keys = [];
+    var requirements = ACTION_REQUIREMENTS[action]
+    for (var key in requirements) {
+      if (requirements.hasOwnProperty(key)) {
+        keys.push(key);
+      }
+    }
+    //check if all requirements are met
+    for (i = 0; i < keys.length; i++) {
+      //ensure person can meet each requirement
+      if (!this.meetsRequirement(keys[i], ACTION_REQUIREMENTS[action][keys[i]])) {
+        //p("did not meet req ", keys[i], "      ", ACTION_REQUIREMENTS[keys[i]])
+        return false;
+      }
+      else {
+      }
+    }
+    //do the action
+    if (action == "walkTo" && value instanceof Environment)  {
+      this.location.removePerson(this)
+      value.addPerson(this)
+      this.location = value
     }
   }
   //should affect or be affected by hunger. Hungry people are worse workers.
@@ -291,8 +351,8 @@ function combineAttributes(mother, father) {
 
 
 Player = new God()
-Eden = new Town()
-Forest = new Nature("forest")
+Eden = new Environment("town")
+Forest = new Environment("forest")
 //notice the null mother and father!
 Adam = new Person("Adam", null, null, "m", Eden)
 Eve = new Person("Eve", null, null, "f", Eden)
@@ -302,8 +362,19 @@ AssertEqual(Eden.allPeopleNames().length, 3, "initialize three people to the tow
 Eden.removePerson(Jose)
 AssertEqual(Eden.allPeopleNames().length, 2, " two people to the town after removing 1")
 
+//actions
+//AssertEqual(Adam.action("kjldsfjl"), false, "given an unknown key, actions are not performed")
+//AssertEqual(Adam.action("moveTo"), true, "in the right circumstances, humans can move")
 
 
+
+AssertEqual(Adam.action("chopWood"), false, "persons cannot chop wood when theyre in the town")
+Adam.action("walkTo", Forest)
+AssertEqual(Adam.location.id, Forest.id, "persons can move when given a location")
+AssertEqual(Adam.action("chopWood"), true, "persons can chop wood when theyre in the forest")
+
+//Adam.town.wood =
+//Adam.action("chopWood")
 
 //Marriage
 Adam.age = AGE_MIN_PROCREATE
