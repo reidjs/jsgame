@@ -107,7 +107,7 @@ function Nature (type) {
   this.wood = 100
 }
 //Actions per turn
-//Work, eat
+//Work, eat, pray
 //Auto Actions per turn: sleep, give birth/advance pregnancy (f), impregnate wife (m)
 
 //Attributes
@@ -132,7 +132,7 @@ function Person(name, mother, father, gender, town) {
   this.god = null //the god they serve
   this.job = null
   this.married_to = null
-  this.attributes = ATTRIBUTES
+  this.attributes = clone(ATTRIBUTES)
   if (this.gender === "f") {
     this.spermdoner = null;
     this.pregnancy = -1 //if -1 false. turn to zero to turn on
@@ -284,7 +284,7 @@ function combineAttributes(mother, father) {
   Object.keys(atr).forEach(function(element) {
     //console.log(father.attributes)
     atr[element] = mother.attributes[element] + father.attributes[element]
-    p(mother.attributes)
+    //p(mother.attributes)
   })
   return atr
 }
