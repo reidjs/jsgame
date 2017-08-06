@@ -73,15 +73,15 @@ var ATTRIBUTES = {"Strength": 1, "Fertility": 1, "Focus": 1}
 //in a way controls the main loop because it will loop thorugh all people []
 //and each one will do stuff based on their traits
 function Town() {
-  //change people to a hash table so that we can look them up quick
-  //this.people = []
   this.people = {}
   this.farms = 0
   this.houses = 0
   this.wood = 0
   this.food = 0
+  this.lastPerson = null //last person added to town
   this.addPerson = function(person) {
     this.people[person.id] = person
+    this.lastPerson = person //WARNING: if they die then this will cause err.
   }
   this.allPeopleNames = function() {
     names = []
@@ -93,7 +93,7 @@ function Town() {
   }
   this.removePerson = function(person) {
     //remove person from the list
-    this.people[person.id] = null;
+    delete this.people[person.id];
   }
 
 }
@@ -268,15 +268,23 @@ function God () {
 //   return hash;
 // };
 
-
+//https://stackoverflow.com/questions/728360/how-do-i-correctly-clone-a-javascript-object?page=1&tab=votes#tab-top
+function clone(obj) {
+    if (null == obj || "object" != typeof obj) return obj;
+    var copy = obj.constructor();
+    for (var attr in obj) {
+        if (obj.hasOwnProperty(attr)) copy[attr] = obj[attr];
+    }
+    return copy;
+}
 
 //Takes mother and father's attributes and combines them for newborns
 function combineAttributes(mother, father) {
-  atr = ATTRIBUTES
-  Object.keys(ATTRIBUTES).forEach(function(element) {
+  atr = clone(ATTRIBUTES)
+  Object.keys(atr).forEach(function(element) {
     //console.log(father.attributes)
     atr[element] = mother.attributes[element] + father.attributes[element]
-
+    p(mother.attributes)
   })
   return atr
 }
@@ -288,17 +296,14 @@ Forest = new Nature("forest")
 //notice the null mother and father!
 Adam = new Person("Adam", null, null, "m", Eden)
 Eve = new Person("Eve", null, null, "f", Eden)
-AssertEqual(Eden.allPeopleNames().length, 2, "initialize two people to the town")
+Jose = new Person("Eve", null, null, "m", Eden)
 
-function load() {
-
-}
-function update() {
-
-}
+AssertEqual(Eden.allPeopleNames().length, 3, "initialize three people to the town")
+Eden.removePerson(Jose)
+AssertEqual(Eden.allPeopleNames().length, 2, " two people to the town after removing 1")
 
 
-//remove person
+
 
 //Marriage
 Adam.age = AGE_MIN_PROCREATE
@@ -319,12 +324,13 @@ Eve.age = AGE_MIN_PROCREATE
 Adam.impregnate(Eve)
 AssertEqual(Eve.pregnancy, 0, "When impregnated successfully, change pregnant from -1 to 0")
 num_people_before_birth = Eden.allPeopleNames().length
-p(Eden.allPeopleNames())
 for (var i = 0; i < TIME_TIL_BIRTH; i++)
   Eve.increaseAge()
 AssertEqual(Eden.allPeopleNames().length, num_people_before_birth+1, "Upon bearing children, number of people in town increases by 1")
-//baby = Eden.people[Eden.people.length-1]
-//AssertEqual(baby.attributes.Strength, 2, "When born, babies have a combination of their mother and father's attributes")
+//p (Eve.attributes.Strength )
+//For some reason the parents attributes are doubled?
+baby = Eden.lastPerson
+AssertEqual(baby.attributes.Strength, Eve.attributes.Strength + Adam.attributes.Strength, "When born, babies have a combination of their mother and father's attributes")
 
 
 //Assigning a job
