@@ -180,7 +180,6 @@ function Person(name, mother, father, gender, town) {
     }
   }
   //List of requirements to perform an action
-  //ACTION = {environment, #required people, #tools, #resources}
   ACTIONS = {
     "walkTo": "human", "chopWood" : "human", "buildFarm" : "human"
   }
