@@ -34,7 +34,8 @@
 //loot are passive skill boosting objects
 
 //Consider removing the phaser stuff.
-
+p = console.log //to shorten our log statements
+var crypto = require('crypto')
 function AssertEqual(actual, expected, comment) {
   if (actual === undefined )
     actual = "undefined"
@@ -72,13 +73,31 @@ var ATTRIBUTES = {"Strength": 1, "Fertility": 1, "Focus": 1}
 //in a way controls the main loop because it will loop thorugh all people []
 //and each one will do stuff based on their traits
 function Town() {
-  this.people = []
+  //change people to a hash table so that we can look them up quick
+  //this.people = []
+  this.people = {}
   this.farms = 0
   this.houses = 0
   this.wood = 0
   this.food = 0
+  this.addPerson = function(person) {
+    this.people[person.id] = person
+  }
+  this.allPeopleNames = function() {
+    names = []
+    allKeys = Object.keys(this.people)
+    for(i = 0; i < allKeys.length; i++) {
+      names.push(this.people[allKeys[i]].name)
+    }
+    return names
+  }
+  this.removePerson = function(person) {
+    //remove person from the list
+    this.people[person.id] = null;
+  }
 
 }
+
 function Nature (type) {
   //Disease
   //Events
@@ -86,9 +105,6 @@ function Nature (type) {
   this.type = type
   this.food = 100
   this.wood = 100
-  this.weatherRain = function(intensity) {
-
-  }
 }
 //Actions per turn
 //Work, eat
@@ -102,12 +118,15 @@ function Nature (type) {
 //Positive Modifiers: Strong, Swift, Smart
 //Negative Modifiers: Weak, Slow, Dumb
 function Person(name, mother, father, gender, town) {
+  //https://stackoverflow.com/questions/9407892/how-to-generate-random-sha1-hash-to-use-as-id-in-node-js
+  this.id = crypto.randomBytes(20).toString('hex');
   this.name = name
   this.mother = mother
   this.father = father
   this.gender = gender
   this.town = town
-  town.people.push(this)
+  //on creation we must hash them into the town dict for quick access
+  town.addPerson(this)
   this.age = 0
   this.hunger = 0
   this.god = null //the god they serve
@@ -237,6 +256,20 @@ function God () {
     }
   }
 }
+//https://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript-jquery
+// String.prototype.hashCode = function() {
+//   var hash = 0, i, chr;
+//   if (this.length === 0) return hash;
+//   for (i = 0; i < this.length; i++) {
+//     chr   = this.charCodeAt(i);
+//     hash  = ((hash << 5) - hash) + chr;
+//     hash |= 0; // Convert to 32bit integer
+//   }
+//   return hash;
+// };
+
+
+
 //Takes mother and father's attributes and combines them for newborns
 function combineAttributes(mother, father) {
   atr = ATTRIBUTES
@@ -248,7 +281,6 @@ function combineAttributes(mother, father) {
   return atr
 }
 
-p = console.log //to shorten our log statements
 
 Player = new God()
 Eden = new Town()
@@ -256,8 +288,17 @@ Forest = new Nature("forest")
 //notice the null mother and father!
 Adam = new Person("Adam", null, null, "m", Eden)
 Eve = new Person("Eve", null, null, "f", Eden)
+AssertEqual(Eden.allPeopleNames().length, 2, "initialize two people to the town")
+
+function load() {
+
+}
+function update() {
+
+}
 
 
+//remove person
 
 //Marriage
 Adam.age = AGE_MIN_PROCREATE
@@ -277,12 +318,13 @@ Adam.age = AGE_MIN_PROCREATE
 Eve.age = AGE_MIN_PROCREATE
 Adam.impregnate(Eve)
 AssertEqual(Eve.pregnancy, 0, "When impregnated successfully, change pregnant from -1 to 0")
-num_people_before_birth = Eden.people.length
+num_people_before_birth = Eden.allPeopleNames().length
+p(Eden.allPeopleNames())
 for (var i = 0; i < TIME_TIL_BIRTH; i++)
   Eve.increaseAge()
-AssertEqual(Eden.people.length, num_people_before_birth+1, "Upon bearing children, number of people in town increases by 1")
-baby = Eden.people[Eden.people.length-1]
-AssertEqual(baby.attributes.Strength, 2, "When born, babies have a combination of their mother and father's attributes")
+AssertEqual(Eden.allPeopleNames().length, num_people_before_birth+1, "Upon bearing children, number of people in town increases by 1")
+//baby = Eden.people[Eden.people.length-1]
+//AssertEqual(baby.attributes.Strength, 2, "When born, babies have a combination of their mother and father's attributes")
 
 
 //Assigning a job
