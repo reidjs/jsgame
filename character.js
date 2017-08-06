@@ -135,7 +135,8 @@ function Person(name, mother, father, gender, town) {
   //NOTE: Men should try to impregnate their wives only.
   else {
     this.impregnate = function(person) {
-      if (this.age >= AGE_MIN_PROCREATE && person.gender === "f" && person.age >= AGE_MIN_PROCREATE && person.pregnancy < 0){
+      if (this.age >= AGE_MIN_PROCREATE && person.gender === "f" &&
+      person.age >= AGE_MIN_PROCREATE && person.pregnancy < 0){
         person.spermdoner = this
         person.pregnancy = 0
         return true
@@ -166,14 +167,14 @@ function Person(name, mother, father, gender, town) {
         if (!this.god)
           break //cannot build without a god
         if (this.god.buildQueue.length > 0) {
-          if (this.god.buildQueue[0] === "farm" && town.wood >= COST_WOOD_FARM) {
+          if (this.god.buildQueue[0] === "farm" && this.town.wood >= COST_WOOD_FARM) {
             town.wood -= COST_WOOD_FARM
             town.farms += 1
             this.god.buildQueue.shift()//remove from queue
           }
-          if (this.god.buildQueue[0] === "house" && town.wood >= COST_WOOD_HOUSE) {
-            town.wood -= COST_WOOD_HOUSE
-            town.houses += 1
+          if (this.god.buildQueue[0] === "house" && this.town.wood >= COST_WOOD_HOUSE) {
+            this.town.wood -= COST_WOOD_HOUSE
+            this.town.houses += 1
             this.god.buildQueue.shift()//remove from queue
           }
         }
@@ -235,7 +236,6 @@ function God () {
         woman.married_to = man
     }
   }
-
 }
 //Takes mother and father's attributes and combines them for newborns
 function combineAttributes(mother, father) {
