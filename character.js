@@ -1,39 +1,4 @@
-// God Simulator
-// 1. Initialize Life
-// 2. Answer Prayers (missions)
-// 3. These cause further problems
-// 4. Collect currency (faith)
-// 5. Use faith to expand your following
-// 6. Persuade your followers to commit horrible, horrible atrocities
-// 7. Assign jobs to followers -
-// Clergy (Give Faith)
-//Builder builds
-// Woodsman (chops wood )
-// Farmer (grows food)
-// followers gain skills in certain jobs to make them 'stick' to that job.
-//followers gain bonuses and ailments (positive and negative) based on their work, hunger, and quests
-//ex: hunger > 100 roll a die every turn to determine if they suffer malnourishment: (works at half the speed of others)
-//build a farm: increase exp in building which gives opportunity to roll certain positive traits like...
-//Master Builder: Buildings built by this person provide double their normal output
-//have a child: roll a die for mother death, roll for 'extra fertile' gene which allows pregnancy in half the original TIME_TIL_BIRTH
-//chop wood: increase exp in axe which can roll positive traits like...
-//Experienced Woodsman: Gathers wood at double speed,
-//but accidents happen too, Broken Limb: Woodsman broke his leg and cannot work for 5 turns
 
-//Use faith to reverse ailments strategically - e.g., fix the woodsman if you are making a large building
-
-//Risk and Reward: Grand projects like churches, altars, etc. have the potential to bring big faith rewards, but
-//these large projects may require you to put your followers in harms way. As long as you have a man and a woman your town
-//can live on.
-//You risk your followers by grouping and outfitting them [armor, weapons, powers, loot] and sending them on quests
-//the goal is to build balanced groups (healer, tank, ranger, missionary) and having them go coerce other
-//societies into believing you. Their success is passive after being outfitted because they leave your 'influence'
-//generally they will return (sometimes they will die) with ailments and bonuses based on the quest profile and their
-//initial properties and skills. They can sometimes bring back loot and other followers.
-
-//loot are passive skill boosting objects
-
-//Consider removing the phaser stuff.
 p = console.log //to shorten our log statements
 var crypto = require('crypto')
 var mutePassingTests = true
@@ -46,7 +11,7 @@ function AssertEqual(actual, expected, comment) {
     actual = "null"
   if (expected === null)
     expected = "null"
-  if (actual == expected)
+  if (actual === expected)
     if (!mutePassingTests)
       p("passed", comment)
     else
@@ -91,18 +56,14 @@ function Environment(type) {
   this.food = 0
   this.trees = 0
   this.lastPerson = null //last person added to town
-  this.parentNode = null
-  this.neighbors = [null, null, null, null] //top, right, down, left
-  this.expandDirection = 0 //east, south, west, up, repeat
-  this.x = 0
-  this.y = 0
-  //when cell expands it generates four neighbors
-  this.expandEnvironment = function(type) {
-
-    daughterCell = new Environment(type)
-    daughterCell.parentNode = this
-    if (this.parentNode == null)
-      daughterCell.x += 1 //expand right
+  this.adj = [] //adjacent environments
+  //environments are the vertexes
+  //creates an edge or connection
+  this.connectEnvironment = function(environment) {
+    if (environment instanceof Environment) {
+      this.adj.push(environment)
+      environment.adj.push(this)
+    }
   }
   this.addPerson = function(person) {
     this.people[person.id] = person
@@ -121,7 +82,20 @@ function Environment(type) {
     //remove person from the list
     delete this.people[person.id];
   }
-
+  this.movePerson = function(person, environment) {
+    //person requirests to move to environment
+    //search through adj[] for environment. if found, move person there
+    if (environment instanceof Environment) {
+      i = 0
+      while (i < this.adj.length) {
+        if (this.adj[i].id === environment.id) {
+          this.removePerson(person)
+          this.adj[i].addPerson(person)
+        }
+        i+=1
+      }
+    }
+  }
 }
 
 
@@ -163,7 +137,7 @@ function Person(name, mother, father, gender, town) {
       else
         childname = childname
       gender = "f"
-      if (Math.floor(Math.random() * 2) + 1 == 2)
+      if (Math.floor(Math.random() * 2) + 1 === 2)
         gender = "m"
       //NOTE: Newborns are not assigned a god because they cannot be given orders (yet)
       newborn = new Person(childname, this, this.spermdoner, gender, this.town)
@@ -215,7 +189,7 @@ function Person(name, mother, father, gender, town) {
   this.meetsRequirement = function(requirement, value) {
     switch(requirement) {
       case "environment":
-        return this.location.type == value
+        return this.location.type === value
         break
       case "requiredPeople":
         return this.location.allPeopleNames().length >= value
@@ -255,10 +229,11 @@ function Person(name, mother, father, gender, town) {
       }
     }
     //do the action (movement is weird)
-    if (action == "walkTo" && value instanceof Environment)  {
-      this.location.removePerson(this)
-      value.addPerson(this)
-      this.location = value
+    if (action === "walkTo")  {
+      //this.location.removePerson(this)
+      //value.addPerson(this)
+      //this.location = value
+      this.location.movePerson(this, value)
     }
     //at this point we  loop through the payoffs
 
@@ -291,7 +266,7 @@ function Person(name, mother, father, gender, town) {
         }
       break
       case "woodsman":
-        if (workedObject.type == "forest") {
+        if (workedObject.type === "forest") {
           this.town.wood += 1
           return true
         }
@@ -315,7 +290,7 @@ function God () {
   this.buildQueue = []
   this.assignJob = function(person, job) {
     //Only if they believe in this god
-    if (person.god == this) {
+    if (person.god === this) {
       person.job = job
       return true
     }
@@ -325,7 +300,7 @@ function God () {
   }
   //NOTE: Build orders do not check for proper amounts of resources.
   this.buildOrder = function(town, building) {
-    if (town === undefined || building == undefined)
+    if (town === undefined || building === undefined)
       return false
 
     if (building === "farm") {
@@ -362,7 +337,7 @@ function God () {
 
 //https://stackoverflow.com/questions/728360/how-do-i-correctly-clone-a-javascript-object?page=1&tab=votes#tab-top
 function clone(obj) {
-    if (null == obj || "object" != typeof obj) return obj;
+    if (null === obj || "object" !== typeof obj) return obj;
     var copy = obj.constructor();
     for (var attr in obj) {
         if (obj.hasOwnProperty(attr)) copy[attr] = obj[attr];
@@ -390,10 +365,20 @@ function combineAttributes(mother, father) {
   return atr
 }
 
+/*******************************
+TESTING BELOW THIS LINE!
+********************************/
 
 Player = new God()
 Eden = new Environment("town")
 Forest = new Environment("forest")
+Heaven = new Environment("sky")
+Eden.connectEnvironment(God)
+AssertEqual(Eden.adj.length === 0, true, "Cannot connect environments to diff onbjects")
+Eden.connectEnvironment(Forest) //connect the two vertices together
+AssertEqual(Forest.adj.length > 0, true, "Can connect environments together")
+
+
 //notice the null mother and father!
 Adam = new Person("Adam", null, null, "m", Eden)
 Eve = new Person("Eve", null, null, "f", Eden)
@@ -406,12 +391,11 @@ AssertEqual(Eden.allPeopleNames().length, 2, " two people to the town after remo
 //actions
 //AssertEqual(Adam.action("kjldsfjl"), false, "given an unknown key, actions are not performed")
 //AssertEqual(Adam.action("moveTo"), true, "in the right circumstances, humans can move")
-
-
-
 AssertEqual(Adam.action("chopWood"), false, "persons cannot chop wood when theyre in the town")
+Adam.action("walkTo", Heaven)
+AssertEqual(Adam.location.id, Eden.id, "persons cannot move to unconnected locations")
 Adam.action("walkTo", Forest)
-AssertEqual(Adam.location.id, Forest.id, "persons can move when given a location")
+AssertEqual(Adam.location.id, Forest.id, "persons can move when given a connected location")
 wood = Eden.wood
 hunger = Adam.hunger
 Adam.action("chopWood")
@@ -423,9 +407,6 @@ Adam.location.trees = 1
 Adam.action("chopWood")
 AssertEqual(Eden.wood > wood, true, "after chopping wood, the amount of wood in the town increases")
 AssertEqual(Adam.hunger > hunger, true, "after chopping wood, the person gets hungry")
-
-//Adam.town.wood =
-//Adam.action("chopWood")
 
 //Marriage
 Adam.age = AGE_MIN_PROCREATE
