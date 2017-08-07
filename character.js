@@ -39,6 +39,10 @@ ACTIONS = {
   "walkTo": "human", "chopWood" : "human", "buildFarm" : "human",
   "heal": "god"
 }
+
+
+
+//obsolete
 ACTION_REQUIREMENTS = {
   "walkTo" : {},
   "chopWood" : {"requiredPeople": 1, "requiredAge": 16, "requiredTrees":1},
@@ -53,6 +57,7 @@ ACTION_REQUIREMENTS = {
 //     "attributes":{"Strength":1}
 //   }
 // }
+//rename action requirements
 ACTION_CHECK = {
   "chopWood" : {
   "type":{"equalTo":"human"},
@@ -96,8 +101,7 @@ function traverse(o,func) {
     }
 }
 
-function meetsRequirements(obj, action) {
-}
+
 //other_obj may be undefined
 function performAction(obj, key, value, other_obj) {
   //make sure the action is in the actions list and it matches this type
