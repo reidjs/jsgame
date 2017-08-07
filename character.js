@@ -74,6 +74,10 @@ var STATUS = {"age": 0, "hunger": 0, "health":100}
 //Resources are contributed to the town
 //in a way controls the main loop because it will loop thorugh all people []
 //and each one will do stuff based on their traits
+
+//Environments should have a distance from one another. We can use God to keep track of this
+//or a global grid system
+//environments
 function Environment(type) {
   this.id = crypto.randomBytes(20).toString('hex');
   this.type = type
@@ -87,6 +91,19 @@ function Environment(type) {
   this.food = 0
   this.trees = 0
   this.lastPerson = null //last person added to town
+  this.parentNode = null
+  this.neighbors = [null, null, null, null] //top, right, down, left
+  this.expandDirection = 0 //east, south, west, up, repeat
+  this.x = 0
+  this.y = 0
+  //when cell expands it generates four neighbors
+  this.expandEnvironment = function(type) {
+
+    daughterCell = new Environment(type)
+    daughterCell.parentNode = this
+    if (this.parentNode == null)
+      daughterCell.x += 1 //expand right
+  }
   this.addPerson = function(person) {
     this.people[person.id] = person
     person.location = this
