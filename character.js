@@ -83,18 +83,38 @@ function Environment(type) {
     delete this.people[person.id];
   }
   this.movePerson = function(person, environment) {
-    //person requirests to move to environment
+    //person requests to move to environment
     //search through adj[] for environment. if found, move person there
-    if (environment instanceof Environment) {
-      i = 0
-      while (i < this.adj.length) {
-        if (this.adj[i].id === environment.id) {
-          this.removePerson(person)
-          this.adj[i].addPerson(person)
-        }
-        i+=1
-      }
+    //if (environment instanceof Environment) {
+    //   i = 0
+    //   while (i < this.adj.length) {
+    //     if (this.adj[i].id === environment.id) {
+    //       this.removePerson(person)
+    //       this.adj[i].addPerson(person)
+    //     }
+    //     i+=1
+    //   }
+    // }
+    //make sure they are connected
+    if (this.loopThroughConnectionsFor("id", environment.id)  !== null) {
+      this.removePerson(person)
+      environment.addPerson(person)
     }
+
+  }
+  this.findAdjacentType = function(type) {
+    return this.loopThroughConnectionsFor("type", type)
+  }
+  //property is a string
+  this.loopThroughConnectionsFor = function(property, value) {
+    i = 0
+    while(i < this.adj.length) {
+      if (this.adj[i][property] === value) {
+        return this.adj[i]
+      }
+      i += 1
+    }
+    return null;
   }
 }
 
@@ -177,8 +197,7 @@ function Person(name, mother, father, gender, town) {
   }
   ACTION_REQUIREMENTS = {
     "walkTo" : {},
-    "chopWood" : {"environment": "forest", "requiredPeople": 1,
-    "requiredAge": 16, "requiredTrees":1},
+    "chopWood" : {"requiredPeople": 1, "requiredAge": 16, "requiredTrees":1},
     "buildFarm" : {"environment": "town", "requiredPeople": 1,
     "requiredWood": COST_WOOD_FARM}}
   ACTION_PAYOFFS = {
@@ -230,9 +249,6 @@ function Person(name, mother, father, gender, town) {
     }
     //do the action (movement is weird)
     if (action === "walkTo")  {
-      //this.location.removePerson(this)
-      //value.addPerson(this)
-      //this.location = value
       this.location.movePerson(this, value)
     }
     //at this point we  loop through the payoffs
@@ -244,14 +260,18 @@ function Person(name, mother, father, gender, town) {
   }
   //should affect or be affected by hunger. Hungry people are worse workers.
   //this will be segue into the actions function
+
   this.work = function(workedObject) {
     switch(this.job) {
       case "clergy":
 
       break
       case "builder":
+      //cannot build without a god. In future, towns should also have
+      // a build queue so they will automously build based on num buildings.
+      //obviously the god queue comes first.
         if (!this.god)
-          break //cannot build without a god
+          break
         if (this.god.buildQueue.length > 0) {
           if (this.god.buildQueue[0] === "farm" && this.town.wood >= COST_WOOD_FARM) {
             town.wood -= COST_WOOD_FARM
@@ -265,18 +285,32 @@ function Person(name, mother, father, gender, town) {
           }
         }
       break
+      //Try to find adjacent forest with trees in it
+      //If there are trees, do the action chopWood
+      //Return to town
       case "woodsman":
-        if (workedObject.type === "forest") {
-          this.town.wood += 1
-          return true
+        if (this.location.trees < 1) {
+          nearestForest = this.location.findAdjacentType("forest")
+          if (nearestForest !== undefined)
+            this.action("walkTo", nearestForest)
         }
-        else {
-          return false
-        }
+        if (this.location.trees > 0)
+          this.action("chopWood")
+          //now he wants to go home...
+
+
+          //this.action("walkTo", this.town)
+        // if (workedObject.type === "forest") {
+        //   this.town.wood += 1
+        //   return true
+        // }
+        // else {
+        //   return false
+        // }
       break
       case "farmer":
         if (this.town.farms > 0)
-        this.town.food += this.town.farms
+          this.town.food += this.town.farms
       break
       default:
         return false
@@ -369,10 +403,10 @@ function combineAttributes(mother, father) {
 TESTING BELOW THIS LINE!
 ********************************/
 
-Player = new God()
-Eden = new Environment("town")
-Forest = new Environment("forest")
-Heaven = new Environment("sky")
+var Player = new God()
+var Eden = new Environment("town")
+var Forest = new Environment("forest")
+var Heaven = new Environment("sky")
 Eden.connectEnvironment(God)
 AssertEqual(Eden.adj.length === 0, true, "Cannot connect environments to diff onbjects")
 Eden.connectEnvironment(Forest) //connect the two vertices together
@@ -380,121 +414,126 @@ AssertEqual(Forest.adj.length > 0, true, "Can connect environments together")
 
 
 //notice the null mother and father!
-Adam = new Person("Adam", null, null, "m", Eden)
-Eve = new Person("Eve", null, null, "f", Eden)
-Jose = new Person("Eve", null, null, "m", Eden)
-
-AssertEqual(Eden.allPeopleNames().length, 3, "initialize three people to the town")
-Eden.removePerson(Jose)
-AssertEqual(Eden.allPeopleNames().length, 2, " two people to the town after removing 1")
-
-//actions
-//AssertEqual(Adam.action("kjldsfjl"), false, "given an unknown key, actions are not performed")
-//AssertEqual(Adam.action("moveTo"), true, "in the right circumstances, humans can move")
-AssertEqual(Adam.action("chopWood"), false, "persons cannot chop wood when theyre in the town")
-Adam.action("walkTo", Heaven)
-AssertEqual(Adam.location.id, Eden.id, "persons cannot move to unconnected locations")
-Adam.action("walkTo", Forest)
-AssertEqual(Adam.location.id, Forest.id, "persons can move when given a connected location")
-wood = Eden.wood
-hunger = Adam.hunger
-Adam.action("chopWood")
-AssertEqual(Eden.wood > wood, false, "person must be old enough to chop wood")
-Adam.age = 17
-Adam.action("chopWood")
-AssertEqual(Eden.wood > wood, false, "there must be trees to chop wood")
-Adam.location.trees = 1
-Adam.action("chopWood")
-AssertEqual(Eden.wood > wood, true, "after chopping wood, the amount of wood in the town increases")
-AssertEqual(Adam.hunger > hunger, true, "after chopping wood, the person gets hungry")
-
-//Marriage
-Adam.age = AGE_MIN_PROCREATE
-Player.marryCouple(Adam, Eve)
-AssertEqual(Eve.married_to, null, "Cannot marry under age of procreation")
-Diego = new Person("Diego", null, null, "m", Eden)
-Diego.age = AGE_MIN_PROCREATE
-Player.marryCouple(Adam, Diego)
-AssertEqual(Adam.married_to, null, "Cannot marry same sex")
-Eve.age = AGE_MIN_PROCREATE
-Player.marryCouple(Adam, Eve)
-AssertEqual(Adam.married_to.name, Eve.name, "Can marry man and woman")
-AssertEqual(Eve.married_to.name, Adam.name, "Can marry woman and man")
-
-//Pregnancy and birth
-Adam.age = AGE_MIN_PROCREATE
-Eve.age = AGE_MIN_PROCREATE
-Adam.impregnate(Eve)
-AssertEqual(Eve.pregnancy, 0, "When impregnated successfully, change pregnant from -1 to 0")
-num_people_before_birth = Eden.allPeopleNames().length
-for (var i = 0; i < TIME_TIL_BIRTH; i++)
-  Eve.increaseAge()
-AssertEqual(Eden.allPeopleNames().length, num_people_before_birth+1, "Upon bearing children, number of people in town increases by 1")
-//p (Eve.attributes.Strength )
-baby = Eden.lastPerson
-AssertEqual(baby.attributes.Strength, Eve.attributes.Strength + Adam.attributes.Strength, "When born, babies have a combination of their mother and father's attributes")
+var Adam = new Person("Adam", null, null, "m", Eden)
+var Eve = new Person("Eve", null, null, "f", Eden)
+var Jose = new Person("Eve", null, null, "m", Eden)
 
 
+
+function testRemovalOfPeople() {
+  AssertEqual(Eden.allPeopleNames().length, 3, "initialize three people to the town")
+  Eden.removePerson(Jose)
+  AssertEqual(Eden.allPeopleNames().length, 2, " two people to the town after removing 1")
+}
+
+
+function testActions() {
+  AssertEqual(Adam.action("chopWood"), false, "persons cannot chop wood when theyre in the town")
+  Adam.action("walkTo", Heaven)
+  AssertEqual(Adam.location.id, Eden.id, "persons cannot move to unconnected locations")
+  Adam.action("walkTo", Forest)
+  AssertEqual(Adam.location.id, Forest.id, "persons can move when given a connected location")
+  wood = Eden.wood
+  hunger = Adam.hunger
+  Adam.action("chopWood")
+  AssertEqual(Eden.wood > wood, false, "person must be old enough to chop wood")
+  Adam.age = 17
+  Adam.action("chopWood")
+  AssertEqual(Eden.wood > wood, false, "there must be trees to chop wood")
+  Adam.location.trees = 1
+  Adam.action("chopWood")
+  AssertEqual(Eden.wood > wood, true, "after chopping wood, the amount of wood in the town increases")
+  AssertEqual(Adam.hunger > hunger, true, "after chopping wood, the person gets hungry")
+
+}
+function testMarriage() {
+  Adam.age = AGE_MIN_PROCREATE
+  Player.marryCouple(Adam, Eve)
+  AssertEqual(Eve.married_to, null, "Cannot marry under age of procreation")
+  Diego = new Person("Diego", null, null, "m", Eden)
+  Diego.age = AGE_MIN_PROCREATE
+  Player.marryCouple(Adam, Diego)
+  AssertEqual(Adam.married_to, null, "Cannot marry same sex")
+  Eve.age = AGE_MIN_PROCREATE
+  Player.marryCouple(Adam, Eve)
+  AssertEqual(Adam.married_to.name, Eve.name, "Can marry man and woman")
+  AssertEqual(Eve.married_to.name, Adam.name, "Can marry woman and man")
+
+}
+function testPregnancy() {
+  //Pregnancy and birth
+  Adam.age = AGE_MIN_PROCREATE
+  Eve.age = AGE_MIN_PROCREATE
+  Adam.impregnate(Eve)
+  AssertEqual(Eve.pregnancy, 0, "When impregnated successfully, change pregnant from -1 to 0")
+
+}
+
+function testBirth() {
+  testPregnancy()
+  num_people_before_birth = Eden.allPeopleNames().length
+  for (var i = 0; i < TIME_TIL_BIRTH; i++)
+    Eve.increaseAge()
+  AssertEqual(Eden.allPeopleNames().length, num_people_before_birth+1, "Upon bearing children, number of people in town increases by 1")
+  //p (Eve.attributes.Strength )
+  baby = Eden.lastPerson
+  AssertEqual(baby.attributes.Strength, Eve.attributes.Strength + Adam.attributes.Strength, "When born, babies have a combination of their mother and father's attributes")
+}
+
+function testJobs() {
 //Assigning a job
-Adam.god = Player
-Player.assignJob(Adam, "woodsman")
-AssertEqual(Player.assignJob(Adam, "woodsman"), true, "God can assign job to people who believe")
-AssertEqual(Player.assignJob(Eve, "woodsman"), false, "God cannot assign job to people who don't believe")
-//Working
-Adam.work(Forest)
-Adam.work(Forest)
-Adam.work(Forest)
-AssertEqual(Adam.work(Forest), true, "People can work if they are assigned a job")
-AssertEqual(Eve.work(Forest), false, "People cannot work if they are not assigned a job")
+  Adam.god = Player
+  Player.assignJob(Adam, "woodsman")
+  AssertEqual(Player.assignJob(Adam, "woodsman"), true, "God can assign job to people who believe")
+  AssertEqual(Player.assignJob(Eve, "woodsman"), false, "God cannot assign job to people who don't believe")
+  wood = Adam.location.wood
+  Forest.trees = 0
+  Adam.work()
+  AssertEqual(Adam.town.wood > wood, false, "Woodsman cannot chop trees if there are none nearby")
+  Forest.trees = 1
+  Adam.work()
+  AssertEqual(Adam.town.wood > wood, true, "Woodsman will increase wood supply if there are trees in an adjacent forest")
+}
+testJobs()
+function testBuilding() {
+  Eve.god = Player
+  Eden.farms = 0
+  Player.assignJob(Eve, "builder")
+  Eden.wood = COST_WOOD_FARM
+  Player.buildOrder(Eden, "farm")
+  Eve.work()
+  AssertEqual(Eden.farms, 1, "People can build farms given the materials and order")
+  Eve.work()
+  AssertEqual(Eden.farms, 1, "People cannot build without enough materials")
+  Eden.wood = COST_WOOD_FARM
+  Eve.work()
+  AssertEqual(Eden.farms, 1, "People will not build without a build order")
+  Player.buildOrder(Eden, "house")
+  Eden.wood = COST_WOOD_HOUSE
+  Eden.homes = 0
+  Eve.work()
+  AssertEqual(Eden.houses, 1, "People will build homes given a build order")
+  Eden.houses = 0
+  Eden.farms = 0
+  Eden.wood = COST_WOOD_HOUSE
+  Player.buildOrder(Eden, "farm")
+  Player.buildOrder(Eden, "house")
+  Player.buildOrder(Eden, "house")
+  Player.buildOrder(Eden, "house")
+  Eve.work()
+  AssertEqual(Eden.farms, 1, "People will build first in the queue")
+}
 
-
-//Building
-Eve.god = Player
-Eden.farms = 0
-Player.assignJob(Eve, "builder")
-Eden.wood = COST_WOOD_FARM
-Player.buildOrder(Eden, "farm")
-Eve.work()
-AssertEqual(Eden.farms, 1, "People can build farms given the materials and order")
-Eve.work()
-AssertEqual(Eden.farms, 1, "People cannot build without enough materials")
-Eden.wood = COST_WOOD_FARM
-Eve.work()
-AssertEqual(Eden.farms, 1, "People will not build without a build order")
-Player.buildOrder(Eden, "house")
-Eden.wood = COST_WOOD_HOUSE
-Eden.homes = 0
-Eve.work()
-AssertEqual(Eden.houses, 1, "People will build homes given a build order")
-Eden.houses = 0
-Eden.farms = 0
-Eden.wood = COST_WOOD_HOUSE
-Player.buildOrder(Eden, "farm")
-Player.buildOrder(Eden, "house")
-Player.buildOrder(Eden, "house")
-Player.buildOrder(Eden, "house")
-Eve.work()
-AssertEqual(Eden.farms, 1, "People will build first in the queue")
-
-
-//Farming
-Bob = new Person("Bob", Adam, Eve, "m", Eden)
-Bob.age = 21
-Bob.god = Player
-Player.assignJob(Bob, "farmer")
-current_food = Bob.town.food
-Bob.work()
-AssertEqual(Bob.town.food, current_food+Bob.town.farms, "Food increases proportional to number of farms when worked")
-current_food = Bob.town.food
-Bob.town.farms = 0
-Bob.work()
-AssertEqual(Bob.town.food, current_food, "Food does not increase if there are no farms to work")
-
-//console.log(Bob)
-
-
-
-//Bob = giveBirth(Eve, Adam, "Bob")
-//For all women, there is a chance that they get pregnant based on num of men
-
-// console.log(Eden.people);
+function testFarming() {
+  Bob = new Person("Bob", Adam, Eve, "m", Eden)
+  Bob.age = 21
+  Bob.god = Player
+  Player.assignJob(Bob, "farmer")
+  current_food = Bob.town.food
+  Bob.work()
+  AssertEqual(Bob.town.food, current_food+Bob.town.farms, "Food increases proportional to number of farms when worked")
+  current_food = Bob.town.food
+  Bob.town.farms = 0
+  Bob.work()
+  AssertEqual(Bob.town.food, current_food, "Food does not increase if there are no farms to work")
+}
