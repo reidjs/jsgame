@@ -34,6 +34,97 @@ var AGE_MIN_PROCREATE = 16
 var HUNGER_PER_TURN = 1
 var ATTRIBUTES = {"Strength": 1, "Fertility": 1, "Focus": 1}
 var STATUS = {"age": 0, "hunger": 0, "health":100}
+
+ACTIONS = {
+  "walkTo": "human", "chopWood" : "human", "buildFarm" : "human",
+  "heal": "god"
+}
+ACTION_REQUIREMENTS = {
+  "walkTo" : {},
+  "chopWood" : {"requiredPeople": 1, "requiredAge": 16, "requiredTrees":1},
+  "buildFarm" : {"locationType": "town", "requiredPeople": 1,
+  "requiredWood": COST_WOOD_FARM}
+}
+// ACTION_CHECK = {
+//   "chopWood" : {
+//     "type":"human",
+//     "age":16,
+//     "location":{"trees":0},
+//     "attributes":{"Strength":1}
+//   }
+// }
+ACTION_CHECK = {
+  "chopWood" : {
+  "type":{"equalTo":"human"},
+  "age":{"greaterThan":16},
+  "location":{"trees":{"greaterThan":0},
+  "attributes":{"Strength":{"greaterThan":1}}}
+  }
+}
+ACTION_GREATER_THAN = {
+  "chopWood": {"age": 16, "location" : {"trees": 0}, "attributes": {"Strength":1}}
+}
+ACTION_EQUAL_TO = {
+  "chopWood:": {"brokenArms":0}
+}
+ACTION_LESS_THAN = {
+  "chopWood:": {}
+}
+ACTION_PAYOFFS = {
+  "walkTo" : {},
+  "chopWood" : {"wood" : 1, "hunger" : 1},
+  "buildFarm" : {"farms" : 1}
+}
+//what must the object give
+ACTION_GIVE = {
+
+}
+ACTION_GET = {
+
+}
+// https://stackoverflow.com/questions/722668/traverse-all-the-nodes-of-a-json-object-tree-with-javascript
+function process(key,value) {
+    console.log(key + " : "+value);
+}
+function traverse(o,func) {
+    for (var i in o) {
+        func.apply(this,[i,o[i]]);
+        if (o[i] !== null && typeof(o[i])=="object") {
+            //going one step down in the object tree!!
+            traverse(o[i],func);
+        }
+    }
+}
+
+function meetsRequirements(obj, action) {
+}
+//other_obj may be undefined
+function performAction(obj, key, value, other_obj) {
+  //make sure the action is in the actions list and it matches this type
+  if (ACTIONS[action] === undefined || ACTIONS[action] !== obj["type"])
+    return false
+  //make sure this object meets the requirements
+  keys = returnKeysFromDictionary(ACTION_REQUIREMENTS[action])
+  //check if all requirements are met
+  for (i = 0; i < keys.length; i++) {
+    if (!meetsRequirement(obj, keys[i], ACTION_REQUIREMENTS[action][keys[i]])) {
+      return false;
+    }
+  }
+  //do the action
+
+  if (action === "walkTo")  {
+    this.location.movePerson(this, value)
+  }
+  //at this point we  loop through the payoffs
+
+  keys = returnKeysFromDictionary(ACTION_PAYOFFS[action])
+  for (i = 0; i < keys.length; i++) {
+    this.getPayoff(keys[i], ACTION_PAYOFFS[action][keys[i]])
+  }
+
+}
+
 //Objects
 //A group of people and their belongings and Buildings
 //Resources are contributed to the town
@@ -130,6 +221,7 @@ function Person(name, mother, father, gender, town) {
   town.addPerson(this)
   this.age = 0
   this.hunger = 0
+  this.brokenArms = 0
   this.god = null //the god they serve
   this.job = null
   this.married_to = null
@@ -166,6 +258,66 @@ function Person(name, mother, father, gender, town) {
       }
     }
   }
+  //var self = this
+  this.checkAction = function(action) {
+    var tree = []
+    var self = this
+    //p(this)
+    //var loopValue = function(obj, )
+    var process = function(obj, list) {
+      myValue = null
+      if (list.length > 2)
+        return process(obj[list.shift()], list)
+      else
+        myValue = obj[list.shift()]
+        //p(obj[list.shift()])
+      comparisonOperator = list.shift() //remove me
+      p("my Value: ",myValue)
+
+      p("comparison operator: ", comparisonOperator)
+      //TO DO: Compare myValue to the
+    }
+    var actionRequirementTraverse = function(o) {
+      for (var i in o) {
+        //func.apply(this,[i,o[i]]);
+        //this.process([i,o[i]])
+        tree.push(i)
+        if (o[i] !== null && typeof(o[i])=="object") {
+            actionRequirementTraverse(o[i]);
+        }
+        else {
+          p("The action value:", o[i])
+          process(self, tree)
+          // p(tree)
+          // p(this.type)
+          // p(this[tree[0]])
+          // var getValue = function(obj, list) {
+          //   p(obj)
+          //   if (list.length > 1) //because the second to last is the operation(e.g., greaterThan) and last is compareValue
+          //     return getValue(obj[list.shift()], list)
+          //   else
+          //     return obj[list.shift()]
+          // }
+          // p(getValue(this['id'],tree))
+          //tree = []
+        }
+      }
+    }
+    actionRequirementTraverse(action)
+  }
+  this.process = function(pair, tree=[]) {
+    if (typeof (pair[1])=="object") {
+      tree.push(pair[0])
+      p(tree)
+    }
+    else {
+      p(tree)
+      tree =[]
+    }
+
+  }
+
+
   this.increaseAge = function () {
     this.age += 1
     this.hunger += HUNGER_PER_TURN
@@ -178,20 +330,7 @@ function Person(name, mother, father, gender, town) {
     }
   }
   //List of requirements to perform an action
-  ACTIONS = {
-    "walkTo": "human", "chopWood" : "human", "buildFarm" : "human",
-    "heal": "god"
-  }
-  ACTION_REQUIREMENTS = {
-    "walkTo" : {},
-    "chopWood" : {"requiredPeople": 1, "requiredAge": 16, "requiredTrees":1},
-    "buildFarm" : {"environment": "town", "requiredPeople": 1,
-    "requiredWood": COST_WOOD_FARM}}
-  ACTION_PAYOFFS = {
-    "walkTo" : {},
-    "chopWood" : {"wood" : 1, "hunger" : 1},
-    "buildFarm" : {"farms" : 1}
-  }
+
   this.meetsRequirement = function(requirement, value) {
     switch(requirement) {
       case "environment":
@@ -407,9 +546,20 @@ AssertEqual(Forest.adj.length > 0, true, "Can connect environments together")
 var Adam = new Person("Adam", null, null, "m", Eden)
 var Eve = new Person("Eve", null, null, "f", Eden)
 var Jose = new Person("Eve", null, null, "m", Eden)
-
-
-
+//p(traverse(ACTION_CHECK["chopWood"], process))
+//traverse(ACTION_CHECK["chopWood"], Adam.processAction)
+Adam.checkAction(ACTION_CHECK["chopWood"])
+//p(Adam["attributes"]["Strength"])
+// list = ['attributes', 'Strength']
+// var loop = function(o, list) {
+//   if (list.length > 1)
+//     return loop(o[list.shift()], list)
+//   else {
+//     // p("t:", o[list.shift()])
+//     return o[list.shift()]
+//   }
+// }
+// p(loop(Adam, list))
 function testRemovalOfPeople() {
   AssertEqual(Eden.allPeopleNames().length, 3, "initialize three people to the town")
   Eden.removePerson(Jose)
