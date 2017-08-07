@@ -44,7 +44,7 @@ var STATUS = {"age": 0, "hunger": 0, "health":100}
 //or a global grid system
 //environments
 function Environment(type) {
-  this.id = crypto.randomBytes(20).toString('hex');
+  this.id = generateId()
   this.type = type
   this.people = {}
   this.buildings = {}
@@ -83,24 +83,10 @@ function Environment(type) {
     delete this.people[person.id];
   }
   this.movePerson = function(person, environment) {
-    //person requests to move to environment
-    //search through adj[] for environment. if found, move person there
-    //if (environment instanceof Environment) {
-    //   i = 0
-    //   while (i < this.adj.length) {
-    //     if (this.adj[i].id === environment.id) {
-    //       this.removePerson(person)
-    //       this.adj[i].addPerson(person)
-    //     }
-    //     i+=1
-    //   }
-    // }
-    //make sure they are connected
     if (this.loopThroughConnectionsFor("id", environment.id)  !== null) {
       this.removePerson(person)
       environment.addPerson(person)
     }
-
   }
   this.findAdjacentType = function(type) {
     return this.loopThroughConnectionsFor("type", type)
@@ -132,7 +118,7 @@ function Environment(type) {
 //Negative Modifiers: Weak, Slow, Dumb
 function Person(name, mother, father, gender, town) {
   //https://stackoverflow.com/questions/9407892/how-to-generate-random-sha1-hash-to-use-as-id-in-node-js
-  this.id = crypto.randomBytes(20).toString('hex');
+  this.id = generateId()
   this.type = "human"
   this.name = name
   this.mother = mother
@@ -193,7 +179,8 @@ function Person(name, mother, father, gender, town) {
   }
   //List of requirements to perform an action
   ACTIONS = {
-    "walkTo": "human", "chopWood" : "human", "buildFarm" : "human"
+    "walkTo": "human", "chopWood" : "human", "buildFarm" : "human",
+    "heal": "god"
   }
   ACTION_REQUIREMENTS = {
     "walkTo" : {},
@@ -258,6 +245,8 @@ function Person(name, mother, father, gender, town) {
       this.getPayoff(keys[i], ACTION_PAYOFFS[action][keys[i]])
     }
   }
+
+
   //should affect or be affected by hunger. Hungry people are worse workers.
   //this will be segue into the actions function
 
@@ -289,6 +278,9 @@ function Person(name, mother, father, gender, town) {
       //If there are trees, do the action chopWood
       //Return to town
       case "woodsman":
+        //TO DO: The woodsman must do a depth first search to find the nearestForest
+        //THEN he will retrace his steps to return home and deposit the wood
+        //at the moment the woodsman will only look at the immediately adjacent cells.
         if (this.location.trees < 1) {
           nearestForest = this.location.findAdjacentType("forest")
           if (nearestForest !== undefined)
@@ -297,17 +289,10 @@ function Person(name, mother, father, gender, town) {
         if (this.location.trees > 0)
           this.action("chopWood")
           //now he wants to go home...
-
-
-          //this.action("walkTo", this.town)
-        // if (workedObject.type === "forest") {
-        //   this.town.wood += 1
-        //   return true
-        // }
-        // else {
-        //   return false
-        // }
       break
+      //TO DO: The farmer returns to their home town if they're not already there.
+      //Then, they will do the needed work on farms, e.g., harvest/plant/water/weed
+      //Upon harvest, the town's food will increase
       case "farmer":
         if (this.town.farms > 0)
           this.town.food += this.town.farms
@@ -318,6 +303,8 @@ function Person(name, mother, father, gender, town) {
   }
 }
 function God () {
+  this.id = generateId()
+  this.type = "god"
   this.alignment = 0 //negative evil, positive good
   this.followers = 0
   this.faith = 0
@@ -399,6 +386,9 @@ function combineAttributes(mother, father) {
   return atr
 }
 
+function generateId() {
+  crypto.randomBytes(20).toString('hex');
+}
 /*******************************
 TESTING BELOW THIS LINE!
 ********************************/
