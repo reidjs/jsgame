@@ -59,6 +59,12 @@ var STATUS = {"age": 0, "hunger": 0, "health":100}
 //for the singular object
 //in order to perform the action the object must meet these requirements
 ACTION_PERFORM_ON_SELF_REQUIREMENTS = {
+  "sayHi":{
+
+  },
+  "repeatHelloFiveTimes":{
+
+  },
   "eat" : {
     "food":{"greaterThan":0}
   },
@@ -77,6 +83,7 @@ ACTION_PERFORM_ON_OTHER_REQUIREMENTS = {
   "walkTo" : {
     "type":{"equalTo":"human"}
   }
+
 }
 //in order for an action to be done on an object, these requirements must be met
 ACTION_ALLOW_REQUIREMENTS={
@@ -86,9 +93,16 @@ ACTION_ALLOW_REQUIREMENTS={
   "walkTo": {
     "adj":{"arrayContains": "$OBJECT.LOCATION"}
   }
+
 }
 //if you successfully 'give' the action, this is what happens to the object that performed the action
 ACTION_GIVE = {
+  "sayHi":{
+    "this": {"callWithNoParams" : "sayHello"}
+  },
+  "repeatHelloFiveTimes":{
+    "this":{"callWithParams":["repeatMessage","Hello There", 7]}
+  },
   "chopWood": {
     "hunger" :{"add": 1},
     "age": {"add":1},
@@ -109,7 +123,9 @@ ACTION_GET = {
   },
   "walkTo":{
     "people": {"addById": "$OBJECT"}
+    // "this": {"addPerson":{"callWithOneParam" : "$OBJECT"}}
   }
+
 }
 
 //https://stackoverflow.com/questions/728360/how-do-i-correctly-clone-a-javascript-object?page=1&tab=votes#tab-top
@@ -196,7 +212,8 @@ function giveAndGetObjectReturnsFromAction(object, action, object2) {
   var actionReturnsTraverse = function(object_to_traverse, returns) {
     for (var i in returns) {
       tree.push(i)
-      if (returns[i] !== null && typeof(returns[i])=="object") {
+      //Arrays can be used to call object function parameters
+      if (returns[i] !== null && typeof(returns[i])=="object" && !(returns[i] instanceof Array)) {
         actionReturnsTraverse(object_to_traverse, returns[i])
       }
       else {
@@ -228,15 +245,20 @@ function giveAndGetObjectReturnsFromAction(object, action, object2) {
       obj[property] += value
     }
     if (operator === "addById"){
-      // p(obj[property])
       obj[property][value.id] = value
-      // p(obj[property])
-      // obj[property]
-      //(obj[property]).push(value)
     }
     if (operator === "change"){
       obj[property] = value
     }
+    if (operator === "callWithNoParams") {
+      // p(obj.name, property, value)
+      obj[value]()
+    }
+    if (operator === "callWithParams") {
+      //p(property, value)
+      obj[value[0]].apply(this, value.slice(1))
+    }
+
   }
   actionReturnsTraverse(object, action_give)
   if (object2 !== undefined) { //if this was performed on another object, we have to repeat the traversal with the different JSON object
@@ -367,6 +389,10 @@ function Environment(type) {
     }
   }
   this.addPerson = function(person) {
+    if (!(person instanceof Person)) {
+      p("Failed to add person!")
+      return false
+    }
     this.people[person.id] = person
     person.location = this
     this.lastPerson = person //WARNING: if they die then this will cause err.
@@ -420,6 +446,7 @@ function Environment(type) {
 function Person(name, mother, father, gender, town) {
   this.id = generateId()
   this.type = "human"
+  this.self = this
   this.name = name
   this.mother = mother
   this.father = father
@@ -471,8 +498,15 @@ function Person(name, mother, father, gender, town) {
     }
   }
   //var self = this
-
-
+  this.sayHello = function() {
+    p("HELLO!")
+  }
+  this.repeatMessage = function(message, times) {
+    // p(message)
+    // p(times)
+    for(i = 0; i < times; i++)
+      p(message)
+  }
   this.increaseAge = function () {
     this.age += 1
     this.hunger += HUNGER_PER_TURN
@@ -722,7 +756,8 @@ function testActions() {
   John.action("eat")
   AssertEqual(John.hunger < hunger, true, "Persons can eat if they have food!")
   AssertEqual(John.food < start_food, true, "if a person eats food, their food amount decreases")
-
+  John.action("sayHi")
+  John.action("repeatHelloFiveTimes")
 }
 
 function testMarriage() {
