@@ -55,9 +55,7 @@ var STATUS = {"age": 0, "hunger": 0, "health":100}
 //     "attributes":{"Strength":1}
 //   }
 // }
-//rename action requirements to action perform because this is
-//for the singular object
-//in order to perform the action the object must meet these requirements
+//TO DO: Allow object actions to call functions with other objects as a parameter?
 ACTION_PERFORM_ON_SELF_REQUIREMENTS = {
   "sayHi":{
 
@@ -69,9 +67,11 @@ ACTION_PERFORM_ON_SELF_REQUIREMENTS = {
     "food":{"greaterThan":0}
   },
   "giveBirth": {
+    "pregnant":{"equalTo":true},
     "gender": {"equalTo":"f"},
-    "age":{"greaterThan":16},
-    "timePregnant":{"greaterThan":9}
+    "age":{"greaterThan":15},
+    "timePregnant":{"greaterThan":8},
+    "spermDoner":{"not":null}
   }
 }
 ACTION_PERFORM_ON_OTHER_REQUIREMENTS = {
@@ -114,6 +114,9 @@ ACTION_GIVE = {
   "eat":{
     "hunger":{"add":-1},
     "food":{"add":-1}
+  },
+  "giveBirth":{
+    "this":{"callWithNoParams" : "haveABaby"}
   }
 }
 //if the object gets an action successfully done on it, this is what happens to the object
@@ -296,12 +299,13 @@ function objectCanPerformAction(object, action, object2) {
        return x < y
       if (operator === "equalTo")
         return x === y
+      if (operator === "not")
+        return x !== y
       if (operator === "arrayContains") {
         //p (x, y)
         // p(x, x.indexOf(y) !== -1)
         return x.indexOf(y) !== -1
       }
-     //p(x,y,operator)
   }
 
   var processRequirement = function(obj, list) {
@@ -451,6 +455,7 @@ function Person(name, mother, father, gender, town) {
   this.mother = mother
   this.father = father
   this.gender = gender
+  this.pregnant = false
   this.town = town
   this.location = town
   this.timePregnant = -1
@@ -460,6 +465,7 @@ function Person(name, mother, father, gender, town) {
   this.age = 0
   this.hunger = 0
   this.food = 0
+  this.spermDoner = null
   this.brokenArms = 0
   this.god = null //the god they serve
   this.job = null
@@ -496,6 +502,18 @@ function Person(name, mother, father, gender, town) {
         return false
       }
     }
+  }
+  this.haveABaby = function() {
+    // p("I'm having a baby!")
+    childname = "newborn"
+    gender = "f"
+    if (Math.floor(Math.random() * 2) + 1 === 2)
+      gender = "m"
+    //NOTE: Newborns are not assigned a god because they cannot be given orders (yet)
+    newborn = new Person(childname, this, this.spermDoner, gender, this.town)
+    newborn.attributes = combineAttributes(this, this.spermDoner)
+    this.spermDoner = null
+    this.pregnancy = -1
   }
   //var self = this
   this.sayHello = function() {
@@ -723,7 +741,7 @@ function testRemovalOfPeople() {
 //p(Adam.location)
 // giveAndGetObjectReturnsFromAction(Adam, "chopWood", Eden)
 // p(Eden.trees)
-testActions()
+// testActions()
 function testActions() {
   var John = new Person("John", null, null, "m", Eden)
   Eden.trees = 0
@@ -782,16 +800,25 @@ function testPregnancy() {
   AssertEqual(Eve.pregnancy, 0, "When impregnated successfully, change pregnant from -1 to 0")
 
 }
-
+testBirth()
 function testBirth() {
-  testPregnancy()
+  // testPregnancy()
   num_people_before_birth = Eden.allPeopleNames().length
-  for (var i = 0; i < TIME_TIL_BIRTH; i++)
-    Eve.increaseAge()
+  Eve.action("giveBirth")
+  AssertEqual(Eden.allPeopleNames().length, num_people_before_birth, "cannot give birth unless pregnant for 9 months")
+  Eve.age = 16
+  Eve.pregnant = true
+  Eve.spermDoner = Adam
+  Eve.gender = "f"
+  Eve.timePregnant = 9
+  Eve.action("giveBirth")
   AssertEqual(Eden.allPeopleNames().length, num_people_before_birth+1, "Upon bearing children, number of people in town increases by 1")
-  //p (Eve.attributes.Strength )
-  baby = Eden.lastPerson
-  AssertEqual(baby.attributes.Strength, Eve.attributes.Strength + Adam.attributes.Strength, "When born, babies have a combination of their mother and father's attributes")
+  // for (var i = 0; i < TIME_TIL_BIRTH; i++)
+  //   Eve.increaseAge()
+  // AssertEqual(Eden.allPeopleNames().length, num_people_before_birth+1, "Upon bearing children, number of people in town increases by 1")
+  // //p (Eve.attributes.Strength )
+  // baby = Eden.lastPerson
+  // AssertEqual(baby.attributes.Strength, Eve.attributes.Strength + Adam.attributes.Strength, "When born, babies have a combination of their mother and father's attributes")
 }
 
 function testJobs() {
