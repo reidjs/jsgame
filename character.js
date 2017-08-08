@@ -61,6 +61,11 @@ var STATUS = {"age": 0, "hunger": 0, "health":100}
 ACTION_PERFORM_ON_SELF_REQUIREMENTS = {
   "eat" : {
     "food":{"greaterThan":0}
+  },
+  "giveBirth": {
+    "gender": {"equalTo":"f"},
+    "age":{"greaterThan":16},
+    "timePregnant":{"greaterThan":9}
   }
 }
 ACTION_PERFORM_ON_OTHER_REQUIREMENTS = {
@@ -91,6 +96,10 @@ ACTION_GIVE = {
   },
   "walkTo" : {
     "location" : {"change": "$OBJECT2"}
+  },
+  "eat":{
+    "hunger":{"add":-1},
+    "food":{"add":-1}
   }
 }
 //if the object gets an action successfully done on it, this is what happens to the object
@@ -215,7 +224,7 @@ function giveAndGetObjectReturnsFromAction(object, action, object2) {
   }
   var giveReturns = function(obj, property, value, operator) {
     if (operator === "add"){
-      p(property, obj[property])
+      // p(property, obj[property])
       obj[property] += value
     }
     if (operator === "addById"){
@@ -417,11 +426,13 @@ function Person(name, mother, father, gender, town) {
   this.gender = gender
   this.town = town
   this.location = town
+  this.timePregnant = -1
   this.inventory = {}
   //on creation we must hash them into the town dict for quick access
   town.addPerson(this)
   this.age = 0
   this.hunger = 0
+  this.food = 0
   this.brokenArms = 0
   this.god = null //the god they serve
   this.job = null
@@ -702,6 +713,15 @@ function testActions() {
   John.action("chopWood", John.location)
   AssertEqual(Eden.wood > wood, true, "after chopping wood, the amount of wood in the town increases")
   AssertEqual(John.hunger > hunger, true, " the person gets hungry after chopping down trees!")
+  hunger = John.hunger
+  John.food = 0
+  John.action("eat")
+  AssertEqual(John.hunger === hunger, true, "Persons cannot eat if they have no food!")
+  John.food = 1
+  start_food = John.food
+  John.action("eat")
+  AssertEqual(John.hunger < hunger, true, "Persons can eat if they have food!")
+  AssertEqual(John.food < start_food, true, "if a person eats food, their food amount decreases")
 
 }
 
