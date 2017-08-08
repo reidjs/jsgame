@@ -117,7 +117,7 @@ function combineAttributes(mother, father) {
   })
   return atr
 }
-
+//https://stackoverflow.com/questions/9407892/how-to-generate-random-sha1-hash-to-use-as-id-in-node-js
 function generateId() {
   return crypto.randomBytes(20).toString('hex');
 }
@@ -199,33 +199,6 @@ function objectCanPerformAction(object, action) {
     return true
   }
 }
-
-//other_obj may be undefined
-// function performAction(obj, key, value, other_obj) {
-//   //make sure the action is in the actions list and it matches this type
-//   if (ACTIONS[action] === undefined || ACTIONS[action] !== obj["type"])
-//     return false
-//   //make sure this object meets the requirements
-//   keys = returnKeysFromDictionary(ACTION_REQUIREMENTS[action])
-//   //check if all requirements are met
-//   for (i = 0; i < keys.length; i++) {
-//     if (!meetsRequirement(obj, keys[i], ACTION_REQUIREMENTS[action][keys[i]])) {
-//       return false;
-//     }
-//   }
-//   //do the action
-//
-//   if (action === "walkTo")  {
-//     this.location.movePerson(this, value)
-//   }
-//   //at this point we  loop through the payoffs
-//
-//   keys = returnKeysFromDictionary(ACTION_PAYOFFS[action])
-//   for (i = 0; i < keys.length; i++) {
-//     this.getPayoff(keys[i], ACTION_PAYOFFS[action][keys[i]])
-//   }
-//
-// }
 
 //Objects
 //A group of people and their belongings and Buildings
@@ -310,7 +283,6 @@ function Environment(type) {
 //Positive Modifiers: Strong, Swift, Smart
 //Negative Modifiers: Weak, Slow, Dumb
 function Person(name, mother, father, gender, town) {
-  //https://stackoverflow.com/questions/9407892/how-to-generate-random-sha1-hash-to-use-as-id-in-node-js
   this.id = generateId()
   this.type = "human"
   this.name = name
