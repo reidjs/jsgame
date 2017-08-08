@@ -40,15 +40,13 @@ ACTIONS = {
   "heal": "god"
 }
 
-
-
 //obsolete
-ACTION_REQUIREMENTS = {
-  "walkTo" : {},
-  "chopWood" : {"requiredPeople": 1, "requiredAge": 16, "requiredTrees":1},
-  "buildFarm" : {"locationType": "town", "requiredPeople": 1,
-  "requiredWood": COST_WOOD_FARM}
-}
+// ACTION_REQUIREMENTS = {
+//   "walkTo" : {},
+//   "chopWood" : {"requiredPeople": 1, "requiredAge": 16, "requiredTrees":1},
+//   "buildFarm" : {"locationType": "town", "requiredPeople": 1,
+//   "requiredWood": COST_WOOD_FARM}
+// }
 // ACTION_CHECK = {
 //   "chopWood" : {
 //     "type":"human",
@@ -58,23 +56,18 @@ ACTION_REQUIREMENTS = {
 //   }
 // }
 //rename action requirements
-ACTION_CHECK = {
+ACTION_REQUIREMENTS = {
   "chopWood" : {
   "type":{"equalTo":"human"},
   "age":{"greaterThan":16},
   "location":{"trees":{"greaterThan":0},
   "attributes":{"Strength":{"greaterThan":1}}}
+  },
+  "pickupWood": {
+  "location":{"wood":{"greaterThan":0}}
   }
 }
-ACTION_GREATER_THAN = {
-  "chopWood": {"age": 16, "location" : {"trees": 0}, "attributes": {"Strength":1}}
-}
-ACTION_EQUAL_TO = {
-  "chopWood:": {"brokenArms":0}
-}
-ACTION_LESS_THAN = {
-  "chopWood:": {}
-}
+
 ACTION_PAYOFFS = {
   "walkTo" : {},
   "chopWood" : {"wood" : 1, "hunger" : 1},
@@ -100,34 +93,98 @@ function traverse(o,func) {
         }
     }
 }
-
-
-//other_obj may be undefined
-function performAction(obj, key, value, other_obj) {
-  //make sure the action is in the actions list and it matches this type
-  if (ACTIONS[action] === undefined || ACTIONS[action] !== obj["type"])
+//returns true if object can perform action
+function objectCanPerformAction(object, action) {
+  action_reqs = ACTION_REQUIREMENTS[action]
+  if (action_reqs === undefined)
     return false
-  //make sure this object meets the requirements
-  keys = returnKeysFromDictionary(ACTION_REQUIREMENTS[action])
-  //check if all requirements are met
-  for (i = 0; i < keys.length; i++) {
-    if (!meetsRequirement(obj, keys[i], ACTION_REQUIREMENTS[action][keys[i]])) {
-      return false;
+  var tree = []
+  var failures = []
+  var actionVal = null //a bit dangerous
+  var self = object
+  //p(this)
+  //var loopValue = function(obj, )
+  var actionComparison = function(x, y, operator) {
+      if (operator === "greaterThan")
+       return x > y
+      if (operator === "lessThan")
+       return x < y
+      if (operator === "equalTo")
+        return x === y
+    // p(x,y,operator)
+  }
+  var process = function(obj, list) {
+    myValue = null
+    //p(list)
+    if (list.length > 2)
+      return process(obj[list.shift()], list)
+    else
+      myValue = obj[list.shift()]
+      //p(obj[list.shift()])
+    comparisonOperator = list.shift() //remove me
+    if (!actionComparison(myValue, actionVal, comparisonOperator)) {
+      //p("Cannot perform action!!!: ",action, myValue, comparisonOperator, actionVal)
+      failures.push([myValue, comparisonOperator, actionVal])
+    }
+    else {
+      //p("Can perform action: ",action, myValue, comparisonOperator, actionVal)
     }
   }
-  //do the action
+  var actionRequirementTraverse = function(o) {
+    for (var i in o) {
+      //func.apply(this,[i,o[i]]);
+      //this.process([i,o[i]])
+      tree.push(i)
+      if (o[i] !== null && typeof(o[i])=="object") {
+          actionRequirementTraverse(o[i]);
+      }
+      else {
+        //p("The action value:", o[i])
+        actionVal = o[i]
 
-  if (action === "walkTo")  {
-    this.location.movePerson(this, value)
+         process(self, tree)
+        // if(actionCheck !== true) {
+        //   failures.push()
+        // }
+      }
+    }
   }
-  //at this point we  loop through the payoffs
-
-  keys = returnKeysFromDictionary(ACTION_PAYOFFS[action])
-  for (i = 0; i < keys.length; i++) {
-    this.getPayoff(keys[i], ACTION_PAYOFFS[action][keys[i]])
+  actionRequirementTraverse(action_reqs)
+  if (failures.length > 0) {
+    //p(action, failures)
+    return false
   }
-
+  else {
+    return true
+  }
 }
+
+//other_obj may be undefined
+// function performAction(obj, key, value, other_obj) {
+//   //make sure the action is in the actions list and it matches this type
+//   if (ACTIONS[action] === undefined || ACTIONS[action] !== obj["type"])
+//     return false
+//   //make sure this object meets the requirements
+//   keys = returnKeysFromDictionary(ACTION_REQUIREMENTS[action])
+//   //check if all requirements are met
+//   for (i = 0; i < keys.length; i++) {
+//     if (!meetsRequirement(obj, keys[i], ACTION_REQUIREMENTS[action][keys[i]])) {
+//       return false;
+//     }
+//   }
+//   //do the action
+//
+//   if (action === "walkTo")  {
+//     this.location.movePerson(this, value)
+//   }
+//   //at this point we  loop through the payoffs
+//
+//   keys = returnKeysFromDictionary(ACTION_PAYOFFS[action])
+//   for (i = 0; i < keys.length; i++) {
+//     this.getPayoff(keys[i], ACTION_PAYOFFS[action][keys[i]])
+//   }
+//
+// }
 
 //Objects
 //A group of people and their belongings and Buildings
@@ -263,63 +320,6 @@ function Person(name, mother, father, gender, town) {
     }
   }
   //var self = this
-  this.checkAction = function(action) {
-    var tree = []
-    var self = this
-    //p(this)
-    //var loopValue = function(obj, )
-    var process = function(obj, list) {
-      myValue = null
-      if (list.length > 2)
-        return process(obj[list.shift()], list)
-      else
-        myValue = obj[list.shift()]
-        //p(obj[list.shift()])
-      comparisonOperator = list.shift() //remove me
-      p("my Value: ",myValue)
-
-      p("comparison operator: ", comparisonOperator)
-      //TO DO: Compare myValue to the
-    }
-    var actionRequirementTraverse = function(o) {
-      for (var i in o) {
-        //func.apply(this,[i,o[i]]);
-        //this.process([i,o[i]])
-        tree.push(i)
-        if (o[i] !== null && typeof(o[i])=="object") {
-            actionRequirementTraverse(o[i]);
-        }
-        else {
-          p("The action value:", o[i])
-          process(self, tree)
-          // p(tree)
-          // p(this.type)
-          // p(this[tree[0]])
-          // var getValue = function(obj, list) {
-          //   p(obj)
-          //   if (list.length > 1) //because the second to last is the operation(e.g., greaterThan) and last is compareValue
-          //     return getValue(obj[list.shift()], list)
-          //   else
-          //     return obj[list.shift()]
-          // }
-          // p(getValue(this['id'],tree))
-          //tree = []
-        }
-      }
-    }
-    actionRequirementTraverse(action)
-  }
-  this.process = function(pair, tree=[]) {
-    if (typeof (pair[1])=="object") {
-      tree.push(pair[0])
-      p(tree)
-    }
-    else {
-      p(tree)
-      tree =[]
-    }
-
-  }
 
 
   this.increaseAge = function () {
@@ -368,25 +368,26 @@ function Person(name, mother, father, gender, town) {
     }
   }
   this.action = function(action, value) {
-    if (ACTIONS[action] === undefined)
+    if (!objectCanPerformAction(this, action)) {
       return false
-    keys = returnKeysFromDictionary(ACTION_REQUIREMENTS[action])
-    //check if all requirements are met
-    for (i = 0; i < keys.length; i++) {
-      if (!this.meetsRequirement(keys[i], ACTION_REQUIREMENTS[action][keys[i]])) {
-        return false;
-      }
     }
-    //do the action (movement is weird)
+    if (action === "chopWood") {
+      this.location.wood += 1
+    }
+    if (action === "pickupWood") {
+      this.town.wood += 1
+    }
+    //else: perform action
     if (action === "walkTo")  {
       this.location.movePerson(this, value)
     }
     //at this point we  loop through the payoffs
 
-    keys = returnKeysFromDictionary(ACTION_PAYOFFS[action])
-    for (i = 0; i < keys.length; i++) {
-      this.getPayoff(keys[i], ACTION_PAYOFFS[action][keys[i]])
-    }
+    // keys = returnKeysFromDictionary(ACTION_PAYOFFS[action])
+    // for (i = 0; i < keys.length; i++) {
+    //   this.getPayoff(keys[i], ACTION_PAYOFFS[action][keys[i]])
+    // }
+    return true
   }
 
 
@@ -552,7 +553,9 @@ var Eve = new Person("Eve", null, null, "f", Eden)
 var Jose = new Person("Eve", null, null, "m", Eden)
 //p(traverse(ACTION_CHECK["chopWood"], process))
 //traverse(ACTION_CHECK["chopWood"], Adam.processAction)
-Adam.checkAction(ACTION_CHECK["chopWood"])
+//objectCanPerformAction(Adam, "chopWood")
+//Adam.checkAction("chopWood")
+//Adam.checkAction(ACTION_CHECK["chopWood"])
 //p(Adam["attributes"]["Strength"])
 // list = ['attributes', 'Strength']
 // var loop = function(o, list) {
@@ -569,27 +572,34 @@ function testRemovalOfPeople() {
   Eden.removePerson(Jose)
   AssertEqual(Eden.allPeopleNames().length, 2, " two people to the town after removing 1")
 }
-
+testActions()
 
 function testActions() {
-  AssertEqual(Adam.action("chopWood"), false, "persons cannot chop wood when theyre in the town")
-  Adam.action("walkTo", Heaven)
-  AssertEqual(Adam.location.id, Eden.id, "persons cannot move to unconnected locations")
-  Adam.action("walkTo", Forest)
-  AssertEqual(Adam.location.id, Forest.id, "persons can move when given a connected location")
+  var John = new Person("John", null, null, "m", Eden)
+  Eden.trees = 0
+  John.action("walkTo", Heaven)
+  AssertEqual(John.location.id, Eden.id, "persons cannot move to unconnected locations")
+  John.action("walkTo", Forest)
+  AssertEqual(John.location.id, Forest.id, "persons can move when given a connected location")
   wood = Eden.wood
-  hunger = Adam.hunger
-  Adam.action("chopWood")
-  AssertEqual(Eden.wood > wood, false, "person must be old enough to chop wood")
-  Adam.age = 17
-  Adam.action("chopWood")
+  hunger = John.hunger
+  John.action("chopWood")
+  John.age = 0
+  AssertEqual(John.action("chopWood"), false, "person must be old enough to chop wood")
+  John.age = 17
+  John.action("chopWood")
   AssertEqual(Eden.wood > wood, false, "there must be trees to chop wood")
-  Adam.location.trees = 1
-  Adam.action("chopWood")
+  John.location.trees = 1
+  John.action("chopWood")
+  AssertEqual(Eden.wood > wood, false, "the character must have at least 2 strength to chop wood")
+  John.attributes.Strength = 2
+  John.action("chopWood")
+  John.action("pickupWood")
   AssertEqual(Eden.wood > wood, true, "after chopping wood, the amount of wood in the town increases")
-  AssertEqual(Adam.hunger > hunger, true, "after chopping wood, the person gets hungry")
+  AssertEqual(John.hunger > hunger, true, " the person gets hungry after chopping down trees!")
 
 }
+
 function testMarriage() {
   Adam.age = AGE_MIN_PROCREATE
   Player.marryCouple(Adam, Eve)
@@ -638,7 +648,6 @@ function testJobs() {
   Adam.work()
   AssertEqual(Adam.town.wood > wood, true, "Woodsman will increase wood supply if there are trees in an adjacent forest")
 }
-testJobs()
 function testBuilding() {
   Eve.god = Player
   Eden.farms = 0
