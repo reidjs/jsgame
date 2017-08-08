@@ -67,6 +67,7 @@ ACTION_PERFORM_ON_OTHER_REQUIREMENTS = {
   "chopWood" : {
   "type":{"equalTo":"human"},
   "age":{"greaterThan":16},
+  "attributes":{"Strength":{"greaterThan":1}}
   },
   "walkTo" : {
     "type":{"equalTo":"human"}
@@ -81,11 +82,12 @@ ACTION_ALLOW_REQUIREMENTS={
     "adj":{"arrayContains": "$OBJECT.LOCATION"}
   }
 }
-//if you successfully 'give' the action, this is what happens to the object
+//if you successfully 'give' the action, this is what happens to the object that performed the action
 ACTION_GIVE = {
   "chopWood": {
     "hunger" :{"add": 1},
-    "age": {"add":1}
+    "age": {"add":1},
+    "town":{"wood":{"add":1}}
   },
   "walkTo" : {
     "location" : {"change": "$OBJECT2"}
@@ -97,7 +99,7 @@ ACTION_GET = {
     "trees": {"add": -1}
   },
   "walkTo":{
-    "people": {"push": "$OBJECT"}
+    "people": {"addById": "$OBJECT"}
   }
 }
 
@@ -197,31 +199,38 @@ function giveAndGetObjectReturnsFromAction(object, action, object2) {
   var processReturn = function(obj, list) {
     myProperty = null
     // p(list)
-    if (list.length > 3)
+    if (list.length > 2)
       return processReturn(obj[list.shift()], list)
     else
       myProperty = list.shift()
     changeOperator = list.shift()
     //list.shift()
-    //p(myProperty, actionReturnValue, changeOperator)
+    // p(myProperty, actionReturnValue, changeOperator)
     if(actionReturnValue === "$OBJECT")
       actionReturnValue = object
-      if(actionReturnValue === "$OBJECT2")
-        actionReturnValue = object2
+    if(actionReturnValue === "$OBJECT2")
+      actionReturnValue = object2
     giveReturns(obj, myProperty, actionReturnValue, changeOperator)
     //p(list)
   }
   var giveReturns = function(obj, property, value, operator) {
     if (operator === "add"){
+      p(property, obj[property])
       obj[property] += value
     }
-    if (operator === "push"){
-      p("a:", property)
+    if (operator === "addById"){
+      // p(obj[property])
+      obj[property][value.id] = value
+      // p(obj[property])
+      // obj[property]
       //(obj[property]).push(value)
+    }
+    if (operator === "change"){
+      obj[property] = value
     }
   }
   actionReturnsTraverse(object, action_give)
-  if (object2 !== undefined) {
+  if (object2 !== undefined) { //if this was performed on another object, we have to repeat the traversal with the different JSON object
     actionReturnsTraverse(object2, action_get)
   }
 }
@@ -258,7 +267,7 @@ function objectCanPerformAction(object, action, object2) {
         return x === y
       if (operator === "arrayContains") {
         //p (x, y)
-        p(x, x.indexOf(y) !== -1)
+        // p(x, x.indexOf(y) !== -1)
         return x.indexOf(y) !== -1
       }
      //p(x,y,operator)
@@ -266,7 +275,7 @@ function objectCanPerformAction(object, action, object2) {
 
   var processRequirement = function(obj, list) {
     myValue = null
-    p(list)
+    // p(list)
     if (list.length > 2)
       return processRequirement(obj[list.shift()], list)
     else
@@ -680,18 +689,17 @@ function testActions() {
   AssertEqual(John.location.id, Forest.id, "persons can move when given a connected location")
   wood = Eden.wood
   hunger = John.hunger
-  John.action("chopWood")
+  John.action("chopWood", John.location)
   John.age = 0
   AssertEqual(John.action("chopWood"), false, "person must be old enough to chop wood")
   John.age = 17
-  John.action("chopWood")
+  John.action("chopWood", John.location)
   AssertEqual(Eden.wood > wood, false, "there must be trees to chop wood")
   John.location.trees = 1
-  John.action("chopWood")
+  John.action("chopWood", John.location)
   AssertEqual(Eden.wood > wood, false, "the character must have at least 2 strength to chop wood")
   John.attributes.Strength = 2
-  John.action("chopWood")
-  John.action("pickupWood")
+  John.action("chopWood", John.location)
   AssertEqual(Eden.wood > wood, true, "after chopping wood, the amount of wood in the town increases")
   AssertEqual(John.hunger > hunger, true, " the person gets hungry after chopping down trees!")
 
