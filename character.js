@@ -35,10 +35,10 @@ var HUNGER_PER_TURN = 1
 var ATTRIBUTES = {"Strength": 1, "Fertility": 1, "Focus": 1}
 var STATUS = {"age": 0, "hunger": 0, "health":100}
 
-ACTIONS = {
-  "walkTo": "human", "chopWood" : "human", "buildFarm" : "human",
-  "heal": "god"
-}
+// ACTIONS = {
+//   "walkTo": "human", "chopWood" : "human", "buildFarm" : "human",
+//   "heal": "god"
+// }
 
 //obsolete
 // ACTION_REQUIREMENTS = {
@@ -55,39 +55,52 @@ ACTIONS = {
 //     "attributes":{"Strength":1}
 //   }
 // }
-//rename action requirements
-ACTION_REQUIREMENTS = {
-  "walkTo" : {
-    "type":{"equalTo":"human"}
-  },
+//rename action requirements to action perform because this is
+//for the singular object
+//in order to perform the action the object must meet these requirements
+ACTION_PERFORM_ON_SELF_REQUIREMENTS = {
+  "eat" : {
+    "food":{"greaterThan":0}
+  }
+}
+ACTION_PERFORM_ON_OTHER_REQUIREMENTS = {
   "chopWood" : {
   "type":{"equalTo":"human"},
   "age":{"greaterThan":16},
-  "location":{"trees":{"greaterThan":0},
-  "attributes":{"Strength":{"greaterThan":1}}}
   },
-  "pickupWood": {
-  "location":{"wood":{"greaterThan":0}}
+  "walkTo" : {
+    "type":{"equalTo":"human"}
   }
-
 }
-ACTION_ALTER = {
+//in order for an action to be done on an object, these requirements must be met
+ACTION_ALLOW_REQUIREMENTS={
+  "chopWood" : {
+    "trees":{"greaterThan": 0}
+  },
+  "walkTo": {
+    "adj":{"arrayContains": "$OBJECT.LOCATION"}
+  }
+}
+//if you successfully 'give' the action, this is what happens to the object
+ACTION_GIVE = {
   "chopWood": {
-    "hunger" : 1
+    "hunger" :{"add": 1},
+    "age": {"add":1}
+  },
+  "walkTo" : {
+    "location" : {"change": "$OBJECT2"}
   }
-
 }
-//obsolete
-ACTION_PAYOFFS = {
-  "walkTo" : {},
-  "chopWood" : {"wood" : 1, "hunger" : 1},
-  "buildFarm" : {"farms" : 1}
-}
-//what must the object give
-
+//if the object gets an action successfully done on it, this is what happens to the object
 ACTION_GET = {
-
+  "chopWood": {
+    "trees": {"add": -1}
+  },
+  "walkTo":{
+    "people": {"push": "$OBJECT"}
+  }
 }
+
 //https://stackoverflow.com/questions/728360/how-do-i-correctly-clone-a-javascript-object?page=1&tab=votes#tab-top
 function clone(obj) {
     if (null === obj || "object" !== typeof obj) return obj;
@@ -122,27 +135,118 @@ function generateId() {
   return crypto.randomBytes(20).toString('hex');
 }
 // https://stackoverflow.com/questions/722668/traverse-all-the-nodes-of-a-json-object-tree-with-javascript
-function process(key,value) {
-    console.log(key + " : "+value);
+
+
+// function process(key,value) {
+//     console.log("KEY:"+key + " : VALUE: "+value);
+// }
+//
+//
+// function traverse(o,func) {
+//     for (var i in o) {
+//         func.apply(this,[i,o[i]]);
+//         if (o[i] !== null && typeof(o[i])=="object") {
+//             //going one step down in the object tree!!
+//             traverse(o[i],func);
+//         }
+//     }
+// }
+
+// function actionControllerRequest(object, action, object2=undefined) {
+//   if (actionController(object, action, object2)) {
+//     return true
+//   }
+//   else {
+//     return false
+//   }
+// }
+//pays out from action if performed succesfully
+
+function actionController(object, action, object2) {
+  if (objectCanPerformAction(object, action, object2)) {
+    giveAndGetObjectReturnsFromAction(object, action, object2)
+    return true
+  }
+  return false
 }
-function traverse(o,func) {
-    for (var i in o) {
-        func.apply(this,[i,o[i]]);
-        if (o[i] !== null && typeof(o[i])=="object") {
-            //going one step down in the object tree!!
-            traverse(o[i],func);
-        }
+
+function giveAndGetObjectReturnsFromAction(object, action, object2) {
+  var action_give = undefined
+  var action_get = undefined
+  if (object2 === undefined) {
+    action_give = ACTION_GIVE[action]
+  }
+  else {
+    action_give = ACTION_GIVE[action]
+    action_get = ACTION_GET[action]
+  }
+  var tree = []
+  var actionReturnValue = null
+  var actionReturnsTraverse = function(object_to_traverse, returns) {
+    for (var i in returns) {
+      tree.push(i)
+      if (returns[i] !== null && typeof(returns[i])=="object") {
+        actionReturnsTraverse(object_to_traverse, returns[i])
+      }
+      else {
+        actionReturnValue = returns[i]
+        processReturn(object_to_traverse, tree)
+      }
     }
+  }
+  var processReturn = function(obj, list) {
+    myProperty = null
+    // p(list)
+    if (list.length > 3)
+      return processReturn(obj[list.shift()], list)
+    else
+      myProperty = list.shift()
+    changeOperator = list.shift()
+    //list.shift()
+    //p(myProperty, actionReturnValue, changeOperator)
+    if(actionReturnValue === "$OBJECT")
+      actionReturnValue = object
+      if(actionReturnValue === "$OBJECT2")
+        actionReturnValue = object2
+    giveReturns(obj, myProperty, actionReturnValue, changeOperator)
+    //p(list)
+  }
+  var giveReturns = function(obj, property, value, operator) {
+    if (operator === "add"){
+      obj[property] += value
+    }
+    if (operator === "push"){
+      p("a:", property)
+      //(obj[property]).push(value)
+    }
+  }
+  actionReturnsTraverse(object, action_give)
+  if (object2 !== undefined) {
+    actionReturnsTraverse(object2, action_get)
+  }
 }
+
+
 //returns true if object can perform action
-function objectCanPerformAction(object, action) {
-  action_reqs = ACTION_REQUIREMENTS[action]
-  if (action_reqs === undefined)
+function objectCanPerformAction(object, action, object2) {
+  var action_self_reqs = undefined
+  var action_allow_reqs = undefined
+  if (object2 === undefined) {
+
+    action_self_reqs = ACTION_PERFORM_ON_SELF_REQUIREMENTS[action]
+  }
+  else {
+
+    action_self_reqs = ACTION_PERFORM_ON_OTHER_REQUIREMENTS[action] //a bit more tricky because other object must allow action
+    action_allow_reqs = ACTION_ALLOW_REQUIREMENTS[action]
+    if (action_allow_reqs === undefined)
+      return false //object 2 cannot find this action
+  }
+  if (action_self_reqs === undefined) //action not found
     return false
   var tree = []
   var failures = []
   var actionRequirementValue = null //for example, it may require 1 strength to chop wood, so this is 1
-  var self = object
   //p(this)
   //var loopValue = function(obj, )
   var actionComparison = function(x, y, operator) {
@@ -152,17 +256,27 @@ function objectCanPerformAction(object, action) {
        return x < y
       if (operator === "equalTo")
         return x === y
-    // p(x,y,operator)
+      if (operator === "arrayContains") {
+        //p (x, y)
+        p(x, x.indexOf(y) !== -1)
+        return x.indexOf(y) !== -1
+      }
+     //p(x,y,operator)
   }
-  var process = function(obj, list) {
+
+  var processRequirement = function(obj, list) {
     myValue = null
-    //p(list)
+    p(list)
     if (list.length > 2)
-      return process(obj[list.shift()], list)
+      return processRequirement(obj[list.shift()], list)
     else
       myValue = obj[list.shift()]
       //p(obj[list.shift()])
     comparisonOperator = list.shift()
+    if (actionRequirementValue === "$OBJECT.LOCATION") {
+      actionRequirementValue = object["location"] //dangerous
+      //p(actionRequirementValue.id)
+    }
     if (!actionComparison(myValue, actionRequirementValue, comparisonOperator)) {
       //p("Cannot perform action!!!: ",action, myValue, comparisonOperator, actionRequirementValue)
       failures.push([myValue, comparisonOperator, actionRequirementValue])
@@ -171,25 +285,29 @@ function objectCanPerformAction(object, action) {
       //p("Can perform action: ",action, myValue, comparisonOperator, actionVal)
     }
   }
-  var actionRequirementTraverse = function(requirements) {
+
+
+  var actionRequirementTraverse = function(object_to_traverse, requirements) {
     for (var i in requirements) {
       //func.apply(this,[i,o[i]]);
       //this.process([i,o[i]])
       tree.push(i)
       if (requirements[i] !== null && typeof(requirements[i])=="object") {
-          actionRequirementTraverse(requirements[i]);
+          actionRequirementTraverse(object_to_traverse, requirements[i]);
       }
       else {
         //p("The action value:", o[i])
         actionRequirementValue = requirements[i]
-        process(self, tree)
+        processRequirement(object_to_traverse, tree)
         // if(actionCheck !== true) {
         //   failures.push()
         // }
       }
     }
   }
-  actionRequirementTraverse(action_reqs)
+  actionRequirementTraverse(object, action_self_reqs)
+  if (action_allow_reqs !== undefined) //for actions on other objects we must check if htey allow it.
+    actionRequirementTraverse(object2, action_allow_reqs)
   if (failures.length > 0) {
     //p(action, failures)
     return false
@@ -368,26 +486,26 @@ function Person(name, mother, father, gender, town) {
   alright with the object it is interacting with. So handshake with the affected object to
   see the consequences. Use the value param to do this second check when necessary
   **/
-  this.action = function(action, value) {
-    if (!objectCanPerformAction(this, action, value)) {
-      return false
-    }
-    if (action === "chopWood") {
-      this.location.wood += 1
-    }
-    if (action === "pickupWood") {
-      this.town.wood += 1
-    }
-    if (action === "walkTo")  {
-      this.location.movePerson(this, value) //I don't like this
-    }
+  //define object2 if this is an action on another object
+  this.action = function(action, object2 = undefined) {
+    return actionController(this, action, object2)
+    //payoff
+    // if (action === "chopWood") {
+    //   this.location.wood += 1
+    // }
+    // if (action === "pickupWood") {
+    //   this.town.wood += 1
+    // }
+    // if (action === "walkTo")  {
+    //   this.location.movePerson(this, value) //I don't like this
+    // }
     //at this point we  loop through the payoffs
 
     // keys = returnKeysFromDictionary(ACTION_PAYOFFS[action])
     // for (i = 0; i < keys.length; i++) {
     //   this.getPayoff(keys[i], ACTION_PAYOFFS[action][keys[i]])
     // }
-    return true
+    //return true
   }
 
 
@@ -519,6 +637,11 @@ AssertEqual(Forest.adj.length > 0, true, "Can connect environments together")
 var Adam = new Person("Adam", null, null, "m", Eden)
 var Eve = new Person("Eve", null, null, "f", Eden)
 var Jose = new Person("Eve", null, null, "m", Eden)
+// p(Adam.age)
+//objectReturnsFromAction(Adam, "chopWood", self=true)
+// p(Adam.age)
+//p(Adam.action("chopWood"))
+
 //p(traverse(ACTION_CHECK["chopWood"], process))
 //traverse(ACTION_CHECK["chopWood"], Adam.processAction)
 //objectCanPerformAction(Adam, "chopWood")
@@ -540,8 +663,13 @@ function testRemovalOfPeople() {
   Eden.removePerson(Jose)
   AssertEqual(Eden.allPeopleNames().length, 2, " two people to the town after removing 1")
 }
+// testActions()
+//p(Eden.trees)
+// p(Eden.trees)
+//p(Adam.location)
+// giveAndGetObjectReturnsFromAction(Adam, "chopWood", Eden)
+// p(Eden.trees)
 testActions()
-
 function testActions() {
   var John = new Person("John", null, null, "m", Eden)
   Eden.trees = 0
