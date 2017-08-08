@@ -57,6 +57,9 @@ ACTIONS = {
 // }
 //rename action requirements
 ACTION_REQUIREMENTS = {
+  "walkTo" : {
+
+  },
   "chopWood" : {
   "type":{"equalTo":"human"},
   "age":{"greaterThan":16},
@@ -66,19 +69,57 @@ ACTION_REQUIREMENTS = {
   "pickupWood": {
   "location":{"wood":{"greaterThan":0}}
   }
-}
 
+}
+ACTION_ALTER = {
+  "chopWood": {
+    "hunger" : 1
+  }
+
+}
+//obsolete
 ACTION_PAYOFFS = {
   "walkTo" : {},
   "chopWood" : {"wood" : 1, "hunger" : 1},
   "buildFarm" : {"farms" : 1}
 }
 //what must the object give
-ACTION_GIVE = {
 
-}
 ACTION_GET = {
 
+}
+//https://stackoverflow.com/questions/728360/how-do-i-correctly-clone-a-javascript-object?page=1&tab=votes#tab-top
+function clone(obj) {
+    if (null === obj || "object" !== typeof obj) return obj;
+    var copy = obj.constructor();
+    for (var attr in obj) {
+        if (obj.hasOwnProperty(attr)) copy[attr] = obj[attr];
+    }
+    return copy;
+}
+// https://stackoverflow.com/questions/558981/getting-a-list-of-associative-array-keys
+function returnKeysFromDictionary(dictionary) {
+  keys = [];
+  for (var key in dictionary) {
+    if (dictionary.hasOwnProperty(key)) {
+      keys.push(key);
+    }
+  }
+  return keys
+}
+//Takes mother and father's attributes and combines them for newborns
+function combineAttributes(mother, father) {
+  atr = clone(ATTRIBUTES)
+  Object.keys(atr).forEach(function(element) {
+    //console.log(father.attributes)
+    atr[element] = mother.attributes[element] + father.attributes[element]
+    //p(mother.attributes)
+  })
+  return atr
+}
+
+function generateId() {
+  return crypto.randomBytes(20).toString('hex');
 }
 // https://stackoverflow.com/questions/722668/traverse-all-the-nodes-of-a-json-object-tree-with-javascript
 function process(key,value) {
@@ -278,6 +319,7 @@ function Person(name, mother, father, gender, town) {
   this.gender = gender
   this.town = town
   this.location = town
+  this.inventory = {}
   //on creation we must hash them into the town dict for quick access
   town.addPerson(this)
   this.age = 0
@@ -331,27 +373,6 @@ function Person(name, mother, father, gender, town) {
         this.pregnancy += 1 //increase 'age' of pregnancy
       if (this.pregnancy >= TIME_TIL_BIRTH)
         this.giveBirth()
-    }
-  }
-  //List of requirements to perform an action
-
-  this.meetsRequirement = function(requirement, value) {
-    switch(requirement) {
-      case "environment":
-        return this.location.type === value
-        break
-      case "requiredPeople":
-        return this.location.allPeopleNames().length >= value
-        break
-      case "requiredWood":
-        return this.town.wood >= value
-        break
-      case "requiredAge":
-        return this.age >= value
-        break
-      case "requiredTrees":
-        return this.location.trees >= value
-        break
     }
   }
   this.getPayoff = function(resource, value) {
@@ -500,39 +521,7 @@ function God () {
 //   return hash;
 // };
 
-//https://stackoverflow.com/questions/728360/how-do-i-correctly-clone-a-javascript-object?page=1&tab=votes#tab-top
-function clone(obj) {
-    if (null === obj || "object" !== typeof obj) return obj;
-    var copy = obj.constructor();
-    for (var attr in obj) {
-        if (obj.hasOwnProperty(attr)) copy[attr] = obj[attr];
-    }
-    return copy;
-}
-// https://stackoverflow.com/questions/558981/getting-a-list-of-associative-array-keys
-function returnKeysFromDictionary(dictionary) {
-  keys = [];
-  for (var key in dictionary) {
-    if (dictionary.hasOwnProperty(key)) {
-      keys.push(key);
-    }
-  }
-  return keys
-}
-//Takes mother and father's attributes and combines them for newborns
-function combineAttributes(mother, father) {
-  atr = clone(ATTRIBUTES)
-  Object.keys(atr).forEach(function(element) {
-    //console.log(father.attributes)
-    atr[element] = mother.attributes[element] + father.attributes[element]
-    //p(mother.attributes)
-  })
-  return atr
-}
 
-function generateId() {
-  crypto.randomBytes(20).toString('hex');
-}
 /*******************************
 TESTING BELOW THIS LINE!
 ********************************/
