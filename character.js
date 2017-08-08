@@ -58,7 +58,7 @@ ACTIONS = {
 //rename action requirements
 ACTION_REQUIREMENTS = {
   "walkTo" : {
-
+    "type":{"equalTo":"human"}
   },
   "chopWood" : {
   "type":{"equalTo":"human"},
@@ -141,7 +141,7 @@ function objectCanPerformAction(object, action) {
     return false
   var tree = []
   var failures = []
-  var actionVal = null //a bit dangerous
+  var actionRequirementValue = null //for example, it may require 1 strength to chop wood, so this is 1
   var self = object
   //p(this)
   //var loopValue = function(obj, )
@@ -162,28 +162,27 @@ function objectCanPerformAction(object, action) {
     else
       myValue = obj[list.shift()]
       //p(obj[list.shift()])
-    comparisonOperator = list.shift() //remove me
-    if (!actionComparison(myValue, actionVal, comparisonOperator)) {
-      //p("Cannot perform action!!!: ",action, myValue, comparisonOperator, actionVal)
-      failures.push([myValue, comparisonOperator, actionVal])
+    comparisonOperator = list.shift()
+    if (!actionComparison(myValue, actionRequirementValue, comparisonOperator)) {
+      //p("Cannot perform action!!!: ",action, myValue, comparisonOperator, actionRequirementValue)
+      failures.push([myValue, comparisonOperator, actionRequirementValue])
     }
     else {
       //p("Can perform action: ",action, myValue, comparisonOperator, actionVal)
     }
   }
-  var actionRequirementTraverse = function(o) {
-    for (var i in o) {
+  var actionRequirementTraverse = function(requirements) {
+    for (var i in requirements) {
       //func.apply(this,[i,o[i]]);
       //this.process([i,o[i]])
       tree.push(i)
-      if (o[i] !== null && typeof(o[i])=="object") {
-          actionRequirementTraverse(o[i]);
+      if (requirements[i] !== null && typeof(requirements[i])=="object") {
+          actionRequirementTraverse(requirements[i]);
       }
       else {
         //p("The action value:", o[i])
-        actionVal = o[i]
-
-         process(self, tree)
+        actionRequirementValue = requirements[i]
+        process(self, tree)
         // if(actionCheck !== true) {
         //   failures.push()
         // }
@@ -347,21 +346,30 @@ function Person(name, mother, father, gender, town) {
         this.giveBirth()
     }
   }
-  this.getPayoff = function(resource, value) {
-    switch(resource) {
-      case "wood":
-        this.town.wood += 1 //consider putting in inventory til they get to town
-        break
-      case "farms":
-        this.town.farms += 1
-        break
-      case "hunger":
-        this.hunger += 1
-        break
-    }
-  }
+  // this.getPayoff = function(resource, value) {
+  //   switch(resource) {
+  //     case "wood":
+  //       this.town.wood += 1 //consider putting in inventory til they get to town
+  //       break
+  //     case "farms":
+  //       this.town.farms += 1
+  //       break
+  //     case "hunger":
+  //       this.hunger += 1
+  //       break
+  //   }
+  // }
+  /**
+  A note on how to think about this and further implementation:
+  IF objectCanPerformAction checks true, then this Person has met all the
+  requirements to perform the action. However, that does not mean the action
+  will succeed. For example, they may be able to chopWood, but that does not ensure
+  the tree will give wood. So, the ifs after the personal check need to check if that's
+  alright with the object it is interacting with. So handshake with the affected object to
+  see the consequences. Use the value param to do this second check when necessary
+  **/
   this.action = function(action, value) {
-    if (!objectCanPerformAction(this, action)) {
+    if (!objectCanPerformAction(this, action, value)) {
       return false
     }
     if (action === "chopWood") {
@@ -370,9 +378,8 @@ function Person(name, mother, father, gender, town) {
     if (action === "pickupWood") {
       this.town.wood += 1
     }
-    //else: perform action
     if (action === "walkTo")  {
-      this.location.movePerson(this, value)
+      this.location.movePerson(this, value) //I don't like this
     }
     //at this point we  loop through the payoffs
 
@@ -540,6 +547,7 @@ function testActions() {
   Eden.trees = 0
   John.action("walkTo", Heaven)
   AssertEqual(John.location.id, Eden.id, "persons cannot move to unconnected locations")
+  //p(Forest["adj"].indexOf(Eden))
   John.action("walkTo", Forest)
   AssertEqual(John.location.id, Forest.id, "persons can move when given a connected location")
   wood = Eden.wood
