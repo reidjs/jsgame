@@ -82,9 +82,16 @@ ACTION_PERFORM_ON_OTHER_REQUIREMENTS = {
   },
   "walkTo" : {
     "type":{"equalTo":"human"}
+  },
+  "heal":{
+    "type":{"equalTo": "god"}
+  },
+  "marry": {
+    "type":{"equalTo": "human"},
+    "gender":{"equalTo": "m"} //to ensure that men only marry women
   }
-
 }
+//NOTE:In order for an object->object action, the action must show up here as well.
 //in order for an action to be done on an object, these requirements must be met
 ACTION_ALLOW_REQUIREMENTS={
   "chopWood" : {
@@ -92,8 +99,14 @@ ACTION_ALLOW_REQUIREMENTS={
   },
   "walkTo": {
     "adj":{"arrayContains": "$OBJECT.LOCATION"}
+  },
+  "heal":{
+    "health":{"lessThan": 100}
+  },
+  "marry":{
+    "type":{"equalTo": "human"},
+    "gender":{"equalTo": "f"}
   }
-
 }
 //if you successfully 'give' the action, this is what happens to the object that performed the action
 ACTION_GIVE = {
@@ -117,6 +130,9 @@ ACTION_GIVE = {
   },
   "giveBirth":{
     "this":{"callWithNoParams" : "haveABaby"}
+  },
+  "marry":{
+    "spouse":{"change":"$OBJECT2"}
   }
 }
 //if the object gets an action successfully done on it, this is what happens to the object
@@ -127,6 +143,12 @@ ACTION_GET = {
   "walkTo":{
     "people": {"addById": "$OBJECT"}
     // "this": {"addPerson":{"callWithOneParam" : "$OBJECT"}}
+  },
+  "heal":{
+    "health":{"add":1}
+  },
+  "marry":{
+    "spouse":{"change": "$OBJECT"}
   }
 
 }
@@ -452,6 +474,7 @@ function Person(name, mother, father, gender, town) {
   this.father = father
   this.gender = gender
   this.pregnant = false
+  this.health = 100
   this.town = town
   this.location = town
   this.timePregnant = -1
@@ -617,7 +640,7 @@ function Person(name, mother, father, gender, town) {
             this.action("walkTo", nearestForest)
         }
         if (this.location.trees > 0)
-          this.action("chopWood")
+          this.action("chopWood", this.location)
           //now he wants to go home...
       break
       //TO DO: The farmer returns to their home town if they're not already there.
@@ -632,6 +655,20 @@ function Person(name, mother, father, gender, town) {
     }
   }
 }
+
+//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/prototype
+var superHero = function(name, mother, father, gender, town) {
+  Person.call(this, name, mother, father, gender, town)
+  this.type = 'god'
+  this.buildQueue = []
+
+
+}
+superHero.prototype = Object.create(Person.prototype)
+superHero.prototype.constructor = superHero
+
+
+//consider refactoring god with the superhero class so that player gets the 'action' functionality
 function God () {
   this.id = generateId()
   this.type = "god"
@@ -705,6 +742,10 @@ AssertEqual(Forest.adj.length > 0, true, "Can connect environments together")
 var Adam = new Person("Adam", null, null, "m", Eden)
 var Eve = new Person("Eve", null, null, "f", Eden)
 var Jose = new Person("Eve", null, null, "m", Eden)
+var Jesus = new superHero("Jesus", null, null, "m", Heaven) //so that God has the functionality of the person class
+
+// Jesus.prototype.superpowers = 1
+// Jesus.superHero()
 // p(Adam.age)
 //objectReturnsFromAction(Adam, "chopWood", self=true)
 // p(Adam.age)
@@ -738,6 +779,16 @@ function testRemovalOfPeople() {
 // giveAndGetObjectReturnsFromAction(Adam, "chopWood", Eden)
 // p(Eden.trees)
 // testActions()
+testPlayerActions()
+function testPlayerActions() {
+  var John = new Person("John", Adam, Eve, "m", Eden)
+  John.health = 1
+  health = John.health
+  Adam.action("heal", John)
+  AssertEqual(John.health === health, true, "People can't heal people")
+  Jesus.action("heal", John)
+  AssertEqual(John.health > health, true, "Jesus can heal people")
+}
 function testActions() {
   var John = new Person("John", null, null, "m", Eden)
   Eden.trees = 0
@@ -788,6 +839,7 @@ function testMarriage() {
   AssertEqual(Eve.married_to.name, Adam.name, "Can marry woman and man")
 
 }
+
 function testPregnancy() {
   //Pregnancy and birth
   Adam.age = AGE_MIN_PROCREATE
@@ -796,7 +848,7 @@ function testPregnancy() {
   AssertEqual(Eve.pregnancy, 0, "When impregnated successfully, change pregnant from -1 to 0")
 
 }
-testBirth()
+// testBirth()
 function testBirth() {
   // testPregnancy()
   num_people_before_birth = Eden.allPeopleNames().length
@@ -816,12 +868,14 @@ function testBirth() {
   // baby = Eden.lastPerson
   // AssertEqual(baby.attributes.Strength, Eve.attributes.Strength + Adam.attributes.Strength, "When born, babies have a combination of their mother and father's attributes")
 }
-
+// testJobs()
 function testJobs() {
 //Assigning a job
   Adam.god = Player
+  Player.action("assignJob")
   Player.assignJob(Adam, "woodsman")
-  AssertEqual(Player.assignJob(Adam, "woodsman"), true, "God can assign job to people who believe")
+  AssertEqual(Adam.job === "woodsman", true, "God can assign job to people who believe")
+  Player.assignJob(Adam, "woodsman")
   AssertEqual(Player.assignJob(Eve, "woodsman"), false, "God cannot assign job to people who don't believe")
   wood = Adam.location.wood
   Forest.trees = 0
