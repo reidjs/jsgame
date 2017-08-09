@@ -130,7 +130,39 @@ ACTION_GET = {
   }
 
 }
-
+function wordComparison (x, y, operator) {
+    if (operator === "greaterThan")
+     return x > y
+    if (operator === "lessThan")
+     return x < y
+    if (operator === "equalTo")
+      return x === y
+    if (operator === "not")
+      return x !== y
+    if (operator === "arrayContains") {
+      return x.indexOf(y) !== -1
+    }
+}
+function giveReturnsToObject(object, property, value, operator) {
+  if (operator === "add"){
+    // p(property, obj[property])
+    object[property] += value
+  }
+  if (operator === "addById"){
+    object[property][value.id] = value
+  }
+  if (operator === "change"){
+    object[property] = value
+  }
+  if (operator === "callWithNoParams") {
+    // p(obj.name, property, value)
+    object[value]()
+  }
+  if (operator === "callWithParams") {
+    //p(property, value)
+    object[value[0]].apply(this, value.slice(1))
+  }
+}
 //https://stackoverflow.com/questions/728360/how-do-i-correctly-clone-a-javascript-object?page=1&tab=votes#tab-top
 function clone(obj) {
     if (null === obj || "object" !== typeof obj) return obj;
@@ -191,7 +223,7 @@ function generateId() {
 //   }
 // }
 //pays out from action if performed succesfully
-
+//Makes sure that the action can be performed, performs the action, then gives returns
 function actionController(object, action, object2) {
   if (objectCanPerformAction(object, action, object2)) {
     giveAndGetObjectReturnsFromAction(object, action, object2)
@@ -239,29 +271,7 @@ function giveAndGetObjectReturnsFromAction(object, action, object2) {
       actionReturnValue = object
     if(actionReturnValue === "$OBJECT2")
       actionReturnValue = object2
-    giveReturns(obj, myProperty, actionReturnValue, changeOperator)
-    //p(list)
-  }
-  var giveReturns = function(obj, property, value, operator) {
-    if (operator === "add"){
-      // p(property, obj[property])
-      obj[property] += value
-    }
-    if (operator === "addById"){
-      obj[property][value.id] = value
-    }
-    if (operator === "change"){
-      obj[property] = value
-    }
-    if (operator === "callWithNoParams") {
-      // p(obj.name, property, value)
-      obj[value]()
-    }
-    if (operator === "callWithParams") {
-      //p(property, value)
-      obj[value[0]].apply(this, value.slice(1))
-    }
-
+    giveReturnsToObject(obj, myProperty, actionReturnValue, changeOperator)
   }
   actionReturnsTraverse(object, action_give)
   if (object2 !== undefined) { //if this was performed on another object, we have to repeat the traversal with the different JSON object
@@ -292,21 +302,7 @@ function objectCanPerformAction(object, action, object2) {
   var actionRequirementValue = null //for example, it may require 1 strength to chop wood, so this is 1
   //p(this)
   //var loopValue = function(obj, )
-  var actionComparison = function(x, y, operator) {
-      if (operator === "greaterThan")
-       return x > y
-      if (operator === "lessThan")
-       return x < y
-      if (operator === "equalTo")
-        return x === y
-      if (operator === "not")
-        return x !== y
-      if (operator === "arrayContains") {
-        //p (x, y)
-        // p(x, x.indexOf(y) !== -1)
-        return x.indexOf(y) !== -1
-      }
-  }
+
 
   var processRequirement = function(obj, list) {
     myValue = null
@@ -321,7 +317,7 @@ function objectCanPerformAction(object, action, object2) {
       actionRequirementValue = object["location"] //dangerous
       //p(actionRequirementValue.id)
     }
-    if (!actionComparison(myValue, actionRequirementValue, comparisonOperator)) {
+    if (!wordComparison(myValue, actionRequirementValue, comparisonOperator)) {
       //p("Cannot perform action!!!: ",action, myValue, comparisonOperator, actionRequirementValue)
       failures.push([myValue, comparisonOperator, actionRequirementValue])
     }
